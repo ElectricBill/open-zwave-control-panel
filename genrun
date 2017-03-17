@@ -1,0 +1,15 @@
+#!/usr/bin/env /bin/bash
+# pgmdir, rundir, port, sharedlibdir
+
+cat >$1/run-ozwcp <<EOF
+#!/usr/bin/env  /bin/bash
+# Add -d option for trace/debug
+cd $2
+LD_LIBRARY_PATH=$4 $1/ozwcp -p $3
+EOF
+
+cat >/etc/udev/rules.d/55-z-stick.rules <<EOF
+SUBSYSTEM=="tty",ATTRS{idVendor}=="0658",ATTRS{idProduct}=="0200",MODE="0666",SYMLINK+="zwave"
+EOF
+chmod 644 /etc/udev/rules.d/55-z-stick.rules
+udevadm control --reload
