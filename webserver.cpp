@@ -295,7 +295,12 @@ const char *Webserver::SendTopoResponse (struct MHD_Connection *conn, const char
 	TiXmlDocument doc;
 	char str[16];
 	static char fntemp[32];
+#ifdef NO_MKSTEMPS
 	char *fn;
+#else
+	int fd;
+	FILE *fs;
+#endif
 	uint i, j, k;
 	uint8 cnt;
 	uint32 len;
@@ -334,15 +339,25 @@ const char *Webserver::SendTopoResponse (struct MHD_Connection *conn, const char
 			i++;
 		}
 	}
+#ifdef NO_MKSTEMPS
 	strncpy(fntemp, "/tmp/ozwcp.topo.XXXXXX", sizeof(fntemp));
 	fn = mktemp(fntemp);
 	if (fn == NULL)
 		return EMPTY;
 	strncat(fntemp, ".xml", sizeof(fntemp));
+	doc.SaveFile(fn);
+#else
+	strncpy(fntemp, "/tmp/ozwcp.topo.XXXXXX.xml", sizeof(fntemp));
+	fd = mkstemps(fntemp,4);
+	if (fd == -1)
+		return EMPTY;
+	fs = fdopen(fd,"w");
 	if (debug)
 		doc.Print(stdout, 0);
-	doc.SaveFile(fn);
-	return fn;
+	doc.SaveFile(fs);
+	fclose(fs);
+#endif
+	return fntemp;
 }
 
 static TiXmlElement *newstat (char const *tag, char const *label, uint32 const value)
@@ -376,7 +391,12 @@ const char *Webserver::SendStatResponse (struct MHD_Connection *conn, const char
 {
 	TiXmlDocument doc;
 	static char fntemp[32];
+#ifdef NO_MKSTEMPS
 	char *fn;
+#else
+	int fd;
+	FILE *fs;
+#endif
 
 	TiXmlDeclaration* decl = new TiXmlDeclaration( "1.0", "utf-8", "" );
 	doc.LinkEndChild(decl);
@@ -462,15 +482,27 @@ const char *Webserver::SendStatResponse (struct MHD_Connection *conn, const char
 			i++;
 		}
 	}
+#ifdef NO_MKSTEMPS
 	strncpy(fntemp, "/tmp/ozwcp.stat.XXXXXX", sizeof(fntemp));
 	fn = mktemp(fntemp);
 	if (fn == NULL)
-		return EMPTY;
+	  return EMPTY;
 	strncat(fntemp, ".xml", sizeof(fntemp));
 	if (debug)
-		doc.Print(stdout, 0);
+	  doc.Print(stdout, 0);
 	doc.SaveFile(fn);
-	return fn;
+#else
+	strncpy(fntemp, "/tmp/ozwcp.stat.XXXXXX.xml", sizeof(fntemp));
+	fd = mkstemps(fntemp,4);
+	if (fd == -1)
+		return EMPTY;
+	fs = fdopen(fd,"w");
+	if (debug)
+		doc.Print(stdout, 0);
+	doc.SaveFile(fs);
+	fclose(fs);
+#endif
+	return fntemp;
 }
 
 /*
@@ -486,7 +518,12 @@ const char *Webserver::SendTestHealResponse (struct MHD_Connection *conn, const 
 	int arg;
 	bool healrrs = false;
 	static char fntemp[32];
+#ifdef NO_MKSTEMPS
 	char *fn;
+#else
+	int fd;
+	FILE *fs;
+#endif
 
 	TiXmlDeclaration* decl = new TiXmlDeclaration( "1.0", "utf-8", "" );
 	doc.LinkEndChild(decl);
@@ -514,15 +551,27 @@ const char *Webserver::SendTestHealResponse (struct MHD_Connection *conn, const 
 			Manager::Get()->HealNetworkNode(homeId, node, healrrs);
 	}
 
+#ifdef NO_MKSTEMPS
 	strncpy(fntemp, "/tmp/ozwcp.testheal.XXXXXX", sizeof(fntemp));
 	fn = mktemp(fntemp);
 	if (fn == NULL)
-		return EMPTY;
+	  return EMPTY;
 	strncat(fntemp, ".xml", sizeof(fntemp));
 	if (debug)
-		doc.Print(stdout, 0);
+	  doc.Print(stdout, 0);
 	doc.SaveFile(fn);
-	return fn;
+#else
+	strncpy(fntemp, "/tmp/ozwcp.topo.XXXXXX.xml", sizeof(fntemp));
+	fd = mkstemps(fntemp,4);
+	if (fd == -1)
+		return EMPTY;
+	fs = fdopen(fd,"w");
+	if (debug)
+		doc.Print(stdout, 0);
+	doc.SaveFile(fs);
+	fclose(fs);
+#endif
+	return fntemp;
 }
 
 /*
@@ -537,7 +586,12 @@ const char *Webserver::SendSceneResponse (struct MHD_Connection *conn, const cha
 	char str[16];
 	string s;
 	static char fntemp[32];
+#ifdef NO_MKSTEMPS
 	char *fn;
+#else
+	int fd;
+	FILE *fs;
+#endif
 	int cnt;
 	int i;
 	uint8 sid;
@@ -628,15 +682,27 @@ const char *Webserver::SendSceneResponse (struct MHD_Connection *conn, const cha
 			scenesElement->LinkEndChild(valueElement);
 		}
 	}
+#ifdef NO_MKSTEMPS
 	strncpy(fntemp, "/tmp/ozwcp.scenes.XXXXXX", sizeof(fntemp));
 	fn = mktemp(fntemp);
 	if (fn == NULL)
-		return EMPTY;
+	  return EMPTY;
 	strncat(fntemp, ".xml", sizeof(fntemp));
 	if (debug)
-		doc.Print(stdout, 0);
+	  doc.Print(stdout, 0);
 	doc.SaveFile(fn);
-	return fn;
+#else
+	strncpy(fntemp, "/tmp/ozwcp.scenes.XXXXXX.xml", sizeof(fntemp));
+	fd = mkstemps(fntemp,4);
+	if (fd == -1)
+		return EMPTY;
+	fs = fdopen(fd,"w");
+	if (debug)
+		doc.Print(stdout, 0);
+	doc.SaveFile(fs);
+	fclose(fs);
+#endif
+	return fntemp;
 }
 
 /*
@@ -655,7 +721,12 @@ int Webserver::SendPollResponse (struct MHD_Connection *conn)
 	int32 i, j;
 	int32 logread = 0;
 	char fntemp[32];
+#ifdef NO_MKSTEMPS
 	char *fn;
+#else
+	int fd;
+	FILE *fs;
+#endif
 	FILE *fp;
 	int32 ret;
 
@@ -795,15 +866,27 @@ int Webserver::SendPollResponse (struct MHD_Connection *conn)
 		}
 	}
 	pthread_mutex_unlock(&nlock);
+#ifdef NO_MKSTEMPS
 	strncpy(fntemp, "/tmp/ozwcp.poll.XXXXXX", sizeof(fntemp));
 	fn = mktemp(fntemp);
 	if (fn == NULL)
-		return MHD_YES;
+	  return MHD_YES;
 	strncat(fntemp, ".xml", sizeof(fntemp));
 	if (debug)
-		doc.Print(stdout, 0);
+	  doc.Print(stdout, 0);
 	doc.SaveFile(fn);
-	ret = web_send_file(conn, fn, MHD_HTTP_OK, true);
+#else
+	strncpy(fntemp, "/tmp/ozwcp.poll.XXXXXX.xml", sizeof(fntemp));
+	fd = mkstemps(fntemp,4);
+	if (fd == -1)
+		return MHD_YES;
+	fs = fdopen(fd,"w");
+	if (debug)
+		doc.Print(stdout, 0);
+	doc.SaveFile(fs);
+	fclose(fs);
+#endif
+	ret = web_send_file(conn, fntemp, MHD_HTTP_OK, true);
 	return ret;
 }
 /*
@@ -817,7 +900,12 @@ int Webserver::SendDeviceListResponse (struct MHD_Connection *conn)
 	char str[16];
 	int32 i, j;
 	char fntemp[32];
+#ifdef NO_MKSTEMPS
 	char *fn;
+#else
+	int fd;
+	FILE *fs;
+#endif
 	int32 ret;
 
 	TiXmlDeclaration* decl = new TiXmlDeclaration( "1.0", "utf-8", "" );
@@ -902,15 +990,27 @@ int Webserver::SendDeviceListResponse (struct MHD_Connection *conn)
 			i++;
 		}
 	pthread_mutex_unlock(&nlock);
+#ifdef NO_MKSTEMPS
 	strncpy(fntemp, "/tmp/ozwcp.devices.XXXXXX", sizeof(fntemp));
 	fn = mktemp(fntemp);
 	if (fn == NULL)
-		return MHD_YES;
+	  return MHD_YES;
 	strncat(fntemp, ".xml", sizeof(fntemp));
 	if (debug)
-		doc.Print(stdout, 0);
+	  doc.Print(stdout, 0);
 	doc.SaveFile(fn);
-	ret = web_send_file(conn, fn, MHD_HTTP_OK, true);
+#else
+	strncpy(fntemp, "/tmp/ozwcp.devices.XXXXXX.xml", sizeof(fntemp));
+	fd = mkstemps(fntemp,4);
+	if (fd == -1)
+		return MHD_YES;
+	fs = fdopen(fd,"w");
+	if (debug)
+		doc.Print(stdout, 0);
+	doc.SaveFile(fs);
+	fclose(fs);
+#endif
+	ret = web_send_file(conn, fntemp, MHD_HTTP_OK, true);
 	return ret;
 }
 
