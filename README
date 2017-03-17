@@ -1,3 +1,98 @@
+ORIGINAL README PRIOR TO MY FORK CAN BE SEEN BELOW AT v0.2a MARK
+
+LATER NOTES FROM 3/2017:
+
+I forked the control panel software in order to bundle it for simple build
+and installation on my current Ubuntu systems.  Complete installation
+requires build of OpenZWave library in a directory adjacent to the one
+this project is downloaded/cloned to.  E.g.:
+
+/home/myhome/zwave/open-zwave
+/home/myhome/zwave/open-zwave-control-panel
+
+STEPS TO BUILD FOR THE IMPATIENT (or an overview/preview):
+
+cd /home/myhome/zwave/open-zwave # the support library
+make
+cd /home/myhome/zwave/open-zwave=control-panel # the application
+make
+# SET $(OZU) IN Makefile to preferred runtime user, then...
+sudo make install
+
+DETAILS - LIBRARY
+
+The library build on my Ubuntu 14.04 boxes for the library was trivial.
+Type make and done.
+
+DETAILS - CONTROL PANEL
+
+The build of the application required more effort to adjust and install.
+Brief instructions:
+
+You might need to install additional prerequisite libraries.  I needed:
+
+apt-get install libmicrohttpd-dev
+apt-get install libgnutls-dev
+
+I assume this will be OK for Debian and spawn too.
+
+As indicated, the Makefile has been adapted to assume the open-zwave support
+project has been placed in an adjacent directory, i.e. ../open-zwave.
+So if you clone the two projects from GitHub while in a single directory,
+you are good to build.  Just make.
+
+The install target uses these locations which seem reasonable to me based
+on Ubuntu conventions:
+
+# Installation at
+PGMDIR := /usr/local/bin
+RUNSHLIBDIR := /usr/local/lib
+CONFDIR := /var/lib/ozwcp
+RUNDIR := /var/cache/ozwcp
+
+The Makefile allows you to set the user who will own the files and be
+used for runtime.  There is a useradd command in the install target that
+is commented out and untested.  If you are bill and that's who will run
+it, then you are set.  More likely, you will edit the Makefile to change
+the setting of OZU.  If appropriate, create the user.
+
+# The user login and id that will run the package
+OZU := bill
+OZUN := 9281 # the most random number evar
+
+Finally, you can change the service port to your preference:
+
+WPORT := 8821 # HTTP service on this port
+
+Then:
+
+sudo make install
+
+If successful, a script called run-ozwcp will have been written to your
+designated program directory, default being /usr/local/bin.  This will also
+create a rule file /etc/udev/rules.d/55-z-stick.rules for the Aeon Z-Stick
+USB dongle and execute udevadm control --reload.
+
+Plug in the dongle and run-ozwcp.  You should have a web server for Z-Wave
+control.
+
+--------------------------------------------------------------------------
+Notes on source code changes:
+
+I encountered a linker warning during the build.  It was benign but
+annoying so I did this:
+
+The use of the mktemp function is discouraged. Code examination indicates
+it is being used to generate paths for subsequent use with
+TiXmlDocument.SaveFile() function that requires a file path. 
+The method is available with a signature that takes a FILE* instead.
+So I modified the code to use mkstemps.
+
+Since the man page for mkstemps notes that it might not be universally
+available, the new code is conditioned via #ifdef to be used only in the
+absence of -DNO_MKSTEMPS. An appropriate note is in the Makefile. 
+
+============================================================================
 OpenZWave Control Panel v0.2a 8/8/2011
 
 Welcome to a very alpha release of the OpenZWave Control Panel.
