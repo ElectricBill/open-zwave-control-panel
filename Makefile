@@ -24,7 +24,8 @@ CFLAGS	:= -c $(DEBUG_CFLAGS) # -DNO_MKSTEMPS
 LDFLAGS	:= $(DEBUG_LDFLAGS)
 
 # Assume all Z-Wave stuff under our parent directory, library in sibling...
-ZWAVE := $(shell dirname \$(PWD))
+PWD := $(shell pwd)
+ZWAVE := $(shell dirname $(PWD))
 
 OPENZWAVE := $(ZWAVE)/open-zwave
 LIBZWAVE := -L$(ZWAVE)/open-zwave -lopenzwave
@@ -46,7 +47,18 @@ GNUTLS := -lgnutls
 LIBUSB := -ludev
 LIBS := $(LIBZWAVE) $(GNUTLS) $(LIBMICROHTTPD) -lpthread $(LIBUSB) -lresolv
 
-# for Mac OS X
+# Installation at
+PGMDIR := /usr/local/bin
+RUNSHLIBDIR := /usr/local/lib
+CONFDIR := /var/lib/ozwcp
+RUNDIR := /var/cache/ozwcp
+# The user login and id that will run the package
+#OZU := ozw
+OZUN := 9281 # the most random number evar
+OZU := bill
+WPORT := 8821 # HTTP service on this port
+
+# for Mac OS X - which I do not have to test with
 #ARCH := -arch i386 -arch x86_64
 #CFLAGS += $(ARCH)
 #LIBZWAVE := $(wildcard $(OPENZWAVE)/cpp/lib/mac/*.a)
@@ -85,3 +97,19 @@ dist:	ozwcp
 
 clean:
 	rm -f ozwcp *.o
+
+install:
+	echo $(ZWAVE)
+	cp $(OPENZWAVE)/libopenzwave.so* $(RUNSHLIBDIR)
+	chmod ugo+r $(RUNSHLIBDIR)/libopenzwave.so*
+	cp ozwcp $(PGMDIR)
+	mkdir -p $(RUNDIR)
+#	useradd -m -b $(RUNDIR) -s /bin/bash -c "OpenZWave Panel Operation" $(OZU)
+	cp cp.js cp.html $(RUNDIR)
+	mkdir -p $(CONFDIR)
+	cp -r $(OPENZWAVE)/config $(CONFDIR)
+	rm -f $(RUNDIR)/config # prep for symlink
+	ln -s $(CONFDIR) $(RUNDIR)/config
+	./genrun $(PGMDIR) $(RUNDIR) $(WPORT) $(RUNSHLIBDIR)
+	chown -R $(OZU).$(OZU) $(RUNDIR) $(CONFDIR) $(PGMDIR)/*ozwcp
+	chmod u+x $(PGMDIR)/*ozwcp
