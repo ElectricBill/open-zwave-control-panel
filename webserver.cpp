@@ -1231,6 +1231,12 @@ int Webserver::Handler (struct MHD_Connection *conn, const char *url,
 			ret = web_send_file(conn, "scenes.html", MHD_HTTP_OK, false);
 		else if (strcmp(url, "/cp.js") == 0)
 			ret = web_send_file(conn, "cp.js", MHD_HTTP_OK, false);
+		else if (strcmp(url, "/jquery.min.js") == 0)
+			ret = web_send_file(conn, "jquery.min.js", MHD_HTTP_OK, false);
+		else if (strcmp(url, "/bootstrap.min.js") == 0)
+			ret = web_send_file(conn, "bootstrap.min.js", MHD_HTTP_OK, false);
+		else if (strcmp(url, "/bootstrap.min.css") == 0)
+			ret = web_send_file(conn, "bootstrap.min.css", MHD_HTTP_OK, false);
 		else if (strcmp(url, "/favicon.png") == 0)
 			ret = web_send_file(conn, "openzwavetinyicon.png", MHD_HTTP_OK, false);
 		else if (strcmp(url, "/poll.xml") == 0 && (devname != NULL || usb))
@@ -1238,7 +1244,7 @@ int Webserver::Handler (struct MHD_Connection *conn, const char *url,
 		else if (strcmp(url, "/devices.xml") == 0 && (devname != NULL || usb))
 			ret = SendDeviceListResponse(conn);
 		else if (strcmp(url, "/currdev") == 0) 
-			ret = web_send_data(conn, devname ? devname : "NULL", MHD_HTTP_OK, false, false, "text/pain"); // no free, no copy
+			ret = web_send_data(conn, devname ? devname : "NULL", MHD_HTTP_OK, false, false, "text/plain"); // no free, no copy
 		else
 			ret = web_send_data(conn, UNKNOWN, MHD_HTTP_NOT_FOUND, false, false, NULL); // no free, no copy
 		return ret;
