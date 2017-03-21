@@ -41,7 +41,6 @@ var routes = new Array();
 var curclassstat = null;
 var classstats = new Array();
 function newXHR() { // XHR obj for IE7+, Firefox, Chrome, Opera, Safari vs. Microsoft
-	 console.log("New XHR");
 	 if (window.XMLHttpRequest) return new XMLHttpRequest();
 	 else return new ActiveXObject("Microsoft.XMLHTTP");
 }
