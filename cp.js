@@ -40,44 +40,23 @@ var scenes = new Array();
 var routes = new Array();
 var curclassstat = null;
 var classstats = new Array();
-if (window.XMLHttpRequest) { // code for IE7+, Firefox, Chrome, Opera, Safari
-    pollhttp = new XMLHttpRequest();
-} else {
-    pollhttp = new ActiveXObject("Microsoft.XMLHTTP");
+function newXHR() { // XHR obj for IE7+, Firefox, Chrome, Opera, Safari vs. Microsoft
+	 console.log("New XHR");
+	 if (window.XMLHttpRequest) return new XMLHttpRequest();
+	 else return new ActiveXObject("Microsoft.XMLHTTP");
 }
-if (window.XMLHttpRequest) { // code for IE7+, Firefox, Chrome, Opera, Safari
-    scenehttp = new XMLHttpRequest();
-} else {
-    scenehttp = new ActiveXObject("Microsoft.XMLHTTP");
+function sendXHR(h) {
+    if (window.XMLHttpRequest) h.send(null);
+    else h.send();
 }
-if (window.XMLHttpRequest) { // code for IE7+, Firefox, Chrome, Opera, Safari
-    topohttp = new XMLHttpRequest();
-} else {
-    topohttp = new ActiveXObject("Microsoft.XMLHTTP");
-}
-if (window.XMLHttpRequest) { // code for IE7+, Firefox, Chrome, Opera, Safari
-    stathttp = new XMLHttpRequest();
-} else {
-    stathttp = new ActiveXObject("Microsoft.XMLHTTP");
-}
-if (window.XMLHttpRequest) { // code for IE7+, Firefox, Chrome, Opera, Safari
-    atsthttp = new XMLHttpRequest();
-} else {
-    atsthttp = new ActiveXObject("Microsoft.XMLHTTP");
-}
-if (window.XMLHttpRequest) { // code for IE7+, Firefox, Chrome, Opera, Safari
-    racphttp = new XMLHttpRequest();
-} else {
-    racphttp = new ActiveXObject("Microsoft.XMLHTTP");
-}
-
+pollhttp = newXHR();
+scenehttp = newXHR();
+topohttp = newXHR();
+stathttp = newXHR();
+atsthttp = newXHR();
+racphttp = newXHR();
 function GetDefaultDevice() {
-    var devhttp;
-    if (window.XMLHttpRequest) { // code for IE7+, Firefox, Chrome, Opera, Safari
-        devhttp = new XMLHttpRequest();
-    } else {
-        devhttp = new ActiveXObject("Microsoft.XMLHTTP");
-    }
+    var devhttp = newXHR();
     devhttp.onreadystatechange = function() {
         if (devhttp.readyState==4 && devhttp.status==200){
             if (devhttp.responseText == 'NULL')
@@ -154,11 +133,7 @@ function Poll() {
     try {
         pollhttp.open("GET", 'poll.xml', true);
         pollhttp.onreadystatechange = PollReply;
-        if (window.XMLHttpRequest) { // code for IE7+, Firefox, Chrome, Opera, Safari
-            pollhttp.send(null);
-        } else { // code for IE6, IE5
-            pollhttp.send();
-        }
+		  sendXHR(pollhttp);
         pollwait = setTimeout(PollTimeout, 3000); //3 seconds
     } catch (e) {
         pollwait = setTimeout(PollTimeout, 3000); //3 seconds
@@ -590,11 +565,7 @@ function DoValue(id, convert) {
                 arg = 'true';
         }
         params = id + '=' + arg;
-        if (window.XMLHttpRequest) { // code for IE7+, Firefox, Chrome, Opera, Safari
-            posthttp = new XMLHttpRequest();
-        } else {
-            posthttp = new ActiveXObject("Microsoft.XMLHTTP");
-        }
+		  posthttp = newXHR();
         posthttp.open('POST', 'valuepost.html', true);
         posthttp.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
         posthttp.send(params);
@@ -613,11 +584,7 @@ function DoButton(id, pushed) {
         else
             arg = 'false';
         params = id + '=' + arg;
-        if (window.XMLHttpRequest) { // code for IE7+, Firefox, Chrome, Opera, Safari
-            posthttp = new XMLHttpRequest();
-        } else {
-            posthttp = new ActiveXObject("Microsoft.XMLHTTP");
-        }
+		  posthttp = newXHR();
         posthttp.open('POST', 'buttonpost.html', true);
         posthttp.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
         posthttp.send(params);
@@ -636,11 +603,7 @@ function DoDevPost(fun) {
         var params;
 
         params = 'dev=' + document.DevPost.devname.value + '&fn=' + fun + '&usb=' + document.DevPost.usbb.checked;
-        if (window.XMLHttpRequest) { // code for IE7+, Firefox, Chrome, Opera, Safari
-            posthttp = new XMLHttpRequest();
-        } else {
-            posthttp = new ActiveXObject("Microsoft.XMLHTTP");
-        }
+		  posthttp = newXHR();
         posthttp.open('POST', 'devpost.html', true);
         posthttp.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
         posthttp.send(params);
@@ -777,12 +740,7 @@ function DoAdmPost(can) {
         }
         params += '&button=' + document.AdmPost.button.value;
     }
-
-    if (window.XMLHttpRequest) { // code for IE7+, Firefox, Chrome, Opera, Safari
-        posthttp = new XMLHttpRequest();
-    } else {
-        posthttp = new ActiveXObject("Microsoft.XMLHTTP");
-    }
+	 posthttp = newXHR();
     posthttp.open('POST', 'admpost.html', true);
     posthttp.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
     posthttp.send(params);
@@ -882,11 +840,7 @@ function DoNodePost(val) {
         return false;
 
     params = 'fun=' + fun + '&node=' + curnode + '&value=' + val;
-    if (window.XMLHttpRequest) { // code for IE7+, Firefox, Chrome, Opera, Safari
-        posthttp = new XMLHttpRequest();
-    } else {
-        posthttp = new ActiveXObject("Microsoft.XMLHTTP");
-    }
+	 posthttp = newXHR();
     posthttp.open('POST', 'nodepost.html', true);
     posthttp.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
     posthttp.send(params);
@@ -951,12 +905,7 @@ function DoGrpPost() {
         if (opts[i].selected) {
             params += opts[i].text + ',';
         }
-
-    if (window.XMLHttpRequest) { // code for IE7+, Firefox, Chrome, Opera, Safari
-        posthttp = new XMLHttpRequest();
-    } else {
-        posthttp = new ActiveXObject("Microsoft.XMLHTTP");
-    }
+	 posthttp = newXHR();
     posthttp.open('POST', 'grouppost.html', true);
     posthttp.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
     posthttp.send(params);
@@ -988,13 +937,7 @@ function DoPollPost() {
             params += '1,';
         else
             params += '0,';
-
-
-    if (window.XMLHttpRequest) { // code for IE7+, Firefox, Chrome, Opera, Safari
-        posthttp = new XMLHttpRequest();
-    } else {
-        posthttp = new ActiveXObject("Microsoft.XMLHTTP");
-    }
+	 posthttp = newXHR();
     posthttp.open('POST', 'pollpost.html', true);
     posthttp.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
     posthttp.send(params);
@@ -1006,11 +949,7 @@ function DoSavePost() {
     var posthttp;
     var params = 'fun=save';
 
-    if (window.XMLHttpRequest) { // code for IE7+, Firefox, Chrome, Opera, Safari
-        posthttp = new XMLHttpRequest();
-    } else {
-        posthttp = new ActiveXObject("Microsoft.XMLHTTP");
-    }
+	 posthttp = newXHR();
     posthttp.open('POST', 'savepost.html', true);
     posthttp.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
     posthttp.send(params);
