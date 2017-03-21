@@ -105,7 +105,7 @@ install:
 	cp ozwcp $(PGMDIR)
 	mkdir -p $(RUNDIR)
 #	useradd -m -b $(RUNDIR) -s /bin/bash -c "OpenZWave Panel Operation" $(OZU)
-	cp cp.js cp.html $(RUNDIR)
+	cp *.js *.css cp.html $(RUNDIR)
 	mkdir -p $(CONFDIR)
 	cp -r $(OPENZWAVE)/config $(CONFDIR)
 	rm -f $(RUNDIR)/config # prep for symlink
