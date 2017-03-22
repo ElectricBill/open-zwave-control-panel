@@ -95,25 +95,17 @@ extern bool noop;
 extern int debug;
 /*
  * web_send_data
- * Send internal HTML string
+ * Send internal const HTML string
  */
 static int web_send_data (struct MHD_Connection *connection, const char *data,
-		const int code, bool free, bool copy, const char *ct)
+		const int code, const char *ct)
 {
 	struct MHD_Response *response;
 	int ret;
-
-	if (!copy && ! free)
-		response = MHD_create_response_from_buffer(strlen(data), (void *) data, MHD_RESPMEM_PERSISTENT);
-	else if (copy)
-		response = MHD_create_response_from_buffer(strlen(data), (void *) data, MHD_RESPMEM_MUST_COPY);
-	else
-		response = MHD_create_response_from_buffer(strlen(data), (void *) data, MHD_RESPMEM_MUST_FREE);
-
+	response = MHD_create_response_from_buffer(strlen(data),(void *)data,MHD_RESPMEM_PERSISTENT);
 	if (response == NULL)
-		return MHD_NO;
-	if (ct != NULL)
-		MHD_add_response_header(response, "Content-type", ct);
+	  return MHD_NO;
+	if (ct != NULL) MHD_add_response_header(response, "Content-type", ct);
 	ret = MHD_queue_response(connection, code, response);
 	MHD_destroy_response(response);
 	return ret;
@@ -134,7 +126,6 @@ ssize_t web_read_file (void *cls, uint64_t pos, char *buf, size_t max)
 void web_close_file (void *cls)
 {
 	FILE *fp = (FILE *)cls;
-
 	fclose(fp);
 }
 /*
@@ -510,7 +501,7 @@ int Webserver::SendSceneResponse (struct MHD_Connection *conn, const char *fun,
 		sid = Manager::Get()->CreateScene();
 		if (sid == 0) {
 			fprintf(stderr, "sid = 0, out of scene ids\n");
-			return web_send_data(conn, EMPTY, MHD_HTTP_OK, false, false, NULL);
+			return web_send_data(conn, EMPTY, MHD_HTTP_OK, NULL);
 		}
 	}
 	if (strcmp(fun, "values") == 0 ||
@@ -1022,9 +1013,9 @@ int Webserver::respond_by_get_case (struct MHD_Connection *conn, const char *url
 	else if (strcmp(url, "/devices.xml") == 0 && (devname != NULL || usb))
 	   ret = SendDeviceListResponse(conn);
 	else if (strcmp(url, "/currdev") == 0) 
-	   ret = web_send_data(conn, devname ? devname : "NULL", MHD_HTTP_OK, false, false, "text/plain");
+	   ret = web_send_data(conn, devname ? devname : "NULL", MHD_HTTP_OK, "text/plain");
 	else
-	   ret = web_send_data(conn, UNKNOWN, MHD_HTTP_NOT_FOUND, false, false, NULL);
+	   ret = web_send_data(conn, UNKNOWN, MHD_HTTP_NOT_FOUND, NULL);
 		return ret;
 }
 
@@ -1067,7 +1058,7 @@ int Webserver::Handler (struct MHD_Connection *conn, const char *url,
 	else if (strcmp(method, MHD_HTTP_METHOD_POST) == 0) {
 		cp = (conninfo_t *)*ptr;
 		if (0 == *up_data_size) // no POST should be empty
-		   return web_send_data(conn, EMPTY, MHD_HTTP_OK, false, false, NULL);
+		   return web_send_data(conn, EMPTY, MHD_HTTP_OK, NULL);
 		MHD_post_process(cp->conn_pp, up_data, *up_data_size);
 
 		if (strcmp(url, "/devpost.html") == 0) {
@@ -1313,7 +1304,7 @@ int Webserver::Handler (struct MHD_Connection *conn, const char *url,
 			}
 			return MHD_YES;
 		} else
-		  return web_send_data(conn, UNKNOWN, MHD_HTTP_NOT_FOUND, false, false, NULL);
+		  return web_send_data(conn, UNKNOWN, MHD_HTTP_NOT_FOUND, NULL);
 	} else
 		return MHD_NO;
 } // int Webserver::Handler
