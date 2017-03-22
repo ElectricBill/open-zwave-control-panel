@@ -98,8 +98,7 @@ extern int debug;
  * Send internal const HTML string
  */
 static int web_send_data (struct MHD_Connection *connection, const char *data,
-		const int code, const char *ct)
-{
+								  const int code, const char *ct) {
 	struct MHD_Response *response;
 	int ret;
 	response = MHD_create_response_from_buffer(strlen(data),(void *)data,MHD_RESPMEM_PERSISTENT);
@@ -114,8 +113,7 @@ static int web_send_data (struct MHD_Connection *connection, const char *data,
  * web_read_file
  * Read files and send them out
  */
-ssize_t web_read_file (void *cls, uint64_t pos, char *buf, size_t max)
-{
+ssize_t web_read_file (void *cls, uint64_t pos, char *buf, size_t max) {
 	FILE *file = (FILE *)cls;
 	fseek(file, pos, SEEK_SET);
 	return fread(buf, 1, max, file);
@@ -123,8 +121,7 @@ ssize_t web_read_file (void *cls, uint64_t pos, char *buf, size_t max)
 /*
  * web_close_file
  */
-void web_close_file (void *cls)
-{
+void web_close_file (void *cls) {
 	FILE *fp = (FILE *)cls;
 	fclose(fp);
 }
@@ -132,8 +129,7 @@ void web_close_file (void *cls)
  * web_send_file
  * Read files and send them out
  */
-int web_send_file (struct MHD_Connection *conn, const char *filename, const int code, const bool unl)
-{
+int web_send_file (struct MHD_Connection *conn, const char *filename) {
 	struct stat buf;
 	FILE *fp;
 	struct MHD_Response *response;
@@ -168,15 +164,12 @@ int web_send_file (struct MHD_Connection *conn, const char *filename, const int 
 		return MHD_YES;
 	if (ct != NULL)
 		MHD_add_response_header(response, "Content-type", ct);
-	ret = MHD_queue_response(conn, code, response);
+	ret = MHD_queue_response(conn, MHD_HTTP_OK, response);
 	MHD_destroy_response(response);
-	if (unl)
-		unlink(filename);
 	return ret;
 }
 int web_send_blob (struct MHD_Connection *conn, const char *blob, const int code,
-						 const char* contentType, MHD_ResponseMemoryMode bufMode)
-{
+						 const char* contentType, MHD_ResponseMemoryMode bufMode) {
    const char *ct;
 	//   int ret;
 	struct MHD_Response *response;
@@ -203,8 +196,7 @@ int web_send_xml (struct MHD_Connection *conn, TiXmlDocument &doc) {
  * web_get_groups
  * Return some XML to carry node group associations
  */
-void Webserver::web_get_groups (int n, TiXmlElement *ep)
-{
+void Webserver::web_get_groups (int n, TiXmlElement *ep) {
 	int cnt = nodes[n]->numGroups();
 	int i;
 
@@ -232,10 +224,8 @@ void Webserver::web_get_groups (int n, TiXmlElement *ep)
  * web_get_values
  * Retrieve class values based on genres
  */
-void Webserver::web_get_values (int i, TiXmlElement *ep)
-{
+void Webserver::web_get_values (int i, TiXmlElement *ep) {
 	uint16 idcnt = nodes[i]->getValueCount();
-
 	for (uint16 j = 0; j < idcnt; j++) {
 		TiXmlElement* valueElement = new TiXmlElement("value");
 		MyValue *vals = nodes[i]->getValue(j);
@@ -278,7 +268,6 @@ void Webserver::web_get_values (int i, TiXmlElement *ep)
 			}
 			valueElement->LinkEndChild(textElement);
 		}
-
 		string str = Manager::Get()->GetValueHelp(id);
 		if (str.length() > 0) {
 			TiXmlElement* helpElement = new TiXmlElement("help");
@@ -294,8 +283,7 @@ void Webserver::web_get_values (int i, TiXmlElement *ep)
  * Process topology request and return appropiate data
  */
 int Webserver::SendTopoResponse (struct MHD_Connection *conn, const char *fun,
-		const char *arg1, const char *arg2, const char *arg3)
-{
+											const char *arg1, const char *arg2, const char *arg3) {
 	TiXmlDocument doc;
 	char str[16];
 	uint i, j, k;
@@ -336,16 +324,14 @@ int Webserver::SendTopoResponse (struct MHD_Connection *conn, const char *fun,
 	}
 	return web_send_xml(conn,doc);
 } // int Webserver::SendTopoResponse
-static TiXmlElement *newstat (char const *tag, char const *label, char const *value)
-{
+static TiXmlElement *newstat (char const *tag, char const *label, char const *value) {
 	TiXmlElement* statElement = new TiXmlElement(tag);
 	statElement->SetAttribute("label", label);
 	TiXmlText *textElement = new TiXmlText(value);
 	statElement->LinkEndChild(textElement);
 	return statElement;
 }
-static TiXmlElement *newstat (char const *tag, char const *label, uint32 const value)
-{
+static TiXmlElement *newstat (char const *tag, char const *label, uint32 const value) {
 	char str[14];
 	snprintf(str, sizeof(str), "%d", value);
 	return newstat(tag,label,*str);
@@ -355,8 +341,7 @@ static TiXmlElement *newstat (char const *tag, char const *label, uint32 const v
  * Process statistics request and return appropiate data
  */
 int Webserver::SendStatResponse (struct MHD_Connection *conn, const char *fun,
-		const char *arg1, const char *arg2, const char *arg3)
-{
+											const char *arg1, const char *arg2, const char *arg3) {
 	TiXmlDocument doc;
 	TiXmlDeclaration* decl = new TiXmlDeclaration( "1.0", "utf-8", "" );
 	doc.LinkEndChild(decl);
@@ -451,8 +436,7 @@ int Webserver::SendStatResponse (struct MHD_Connection *conn, const char *fun,
  * Process network test and heal requests
  */
 int Webserver::SendTestHealResponse (struct MHD_Connection *conn, const char *fun,
-		const char *arg1, const char *arg2, const char *arg3)
-{
+												 const char *arg1, const char *arg2, const char *arg3) {
 	TiXmlDocument doc;
 	int node;
 	int arg;
@@ -485,8 +469,7 @@ int Webserver::SendTestHealResponse (struct MHD_Connection *conn, const char *fu
  * Process scene request and return appropiate scene data
  */
 int Webserver::SendSceneResponse (struct MHD_Connection *conn, const char *fun,
-		const char *arg1, const char *arg2, const char *arg3)
-{
+											 const char *arg1, const char *arg2, const char *arg3) {
 	TiXmlDocument doc;
 	char str[16];
 	string s;
@@ -586,8 +569,7 @@ int Webserver::SendSceneResponse (struct MHD_Connection *conn, const char *fun,
  * Process poll request from client and return
  * data as xml.
  */
-int Webserver::SendPollResponse (struct MHD_Connection *conn)
-{
+int Webserver::SendPollResponse (struct MHD_Connection *conn) {
 	TiXmlDocument doc;
 	struct stat buf;
 	const int logbufsz = 1024;	// max amount to send of log per poll
@@ -738,8 +720,7 @@ int Webserver::SendPollResponse (struct MHD_Connection *conn)
  * Process request for Device List from client and return
  * data as xml.
  */
-int Webserver::SendDeviceListResponse (struct MHD_Connection *conn)
-{
+int Webserver::SendDeviceListResponse (struct MHD_Connection *conn) {
 	TiXmlDocument doc;
 	char str[16];
 	int32 i, j;
@@ -827,8 +808,7 @@ int Webserver::SendDeviceListResponse (struct MHD_Connection *conn)
  * web_controller_update
  * Handle controller function feedback from library.
  */
-void web_controller_update (Driver::ControllerState cs, Driver::ControllerError err, void *ct)
-{
+void web_controller_update (Driver::ControllerState cs, Driver::ControllerError err, void *ct) {
 	Webserver *cp = (Webserver *)ct;
 	string s;
 	bool more = true;
@@ -887,9 +867,8 @@ void web_controller_update (Driver::ControllerState cs, Driver::ControllerError 
  * move the keyword form data to the conninfo_t struct positional fields based on func type
  */
 int web_config_post (void *cls, enum MHD_ValueKind kind, const char *key, const char *filename,
-		const char *content_type, const char *transfer_encoding,
-		const char *data, uint64_t off, size_t size)
-{
+							const char *content_type, const char *transfer_encoding,
+							const char *data, uint64_t off, size_t size) {
 	conninfo_t *cp = (conninfo_t *)cls;
 	fprintf(stderr, "post: key=%s data=%s size=%d\n", key, data, size);
 	if (strcmp(cp->conn_url, "/devpost.html") == 0) {
@@ -984,30 +963,28 @@ int web_config_post (void *cls, enum MHD_ValueKind kind, const char *key, const 
  * Process web requests
  */
 int Webserver::HandlerEP (void *cls, struct MHD_Connection *conn, const char *url,
-		const char *method, const char *version, const char *up_data,
-		size_t *up_data_size, void **ptr)
-{
+								  const char *method, const char *version, const char *up_data,
+								  size_t *up_data_size, void **ptr) {
 	Webserver *ws = (Webserver *)cls;
 	return ws->Handler(conn, url, method, version, up_data, up_data_size, ptr);
 }
 // Process all the requests received via HTTP GET
 int Webserver::respond_by_get_case (struct MHD_Connection *conn, const char *url) {
    int ret;
-   if (strcmp(url, "/") == 0 ||
-		 strcmp(url, "/index.html") == 0)
-	   ret = web_send_file(conn, "cp.html", MHD_HTTP_OK, false);
+   if (strcmp(url, "/") == 0 || strcmp(url, "/index.html") == 0)
+	   ret = web_send_file(conn, "cp.html");
 	else if (strcmp(url, "/scenes.html") == 0)
-	   ret = web_send_file(conn, "scenes.html", MHD_HTTP_OK, false);
+	   ret = web_send_file(conn, "scenes.html");
 	else if (strcmp(url, "/cp.js") == 0)
-	   ret = web_send_file(conn, "cp.js", MHD_HTTP_OK, false);
+	   ret = web_send_file(conn, "cp.js");
 	else if (strcmp(url, "/jquery.min.js") == 0)
-	   ret = web_send_file(conn, "jquery.min.js", MHD_HTTP_OK, false);
+	   ret = web_send_file(conn, "jquery.min.js");
 	else if (strcmp(url, "/bootstrap.min.js") == 0)
-	   ret = web_send_file(conn, "bootstrap.min.js", MHD_HTTP_OK, false);
+	   ret = web_send_file(conn, "bootstrap.min.js");
 	else if (strcmp(url, "/bootstrap.min.css") == 0)
-	   ret = web_send_file(conn, "bootstrap.min.css", MHD_HTTP_OK, false);
+	   ret = web_send_file(conn, "bootstrap.min.css");
 	else if (strcmp(url, "/favicon.png") == 0)
-	   ret = web_send_file(conn, "openzwavetinyicon.png", MHD_HTTP_OK, false);
+	   ret = web_send_file(conn, "openzwavetinyicon.png");
 	else if (strcmp(url, "/poll.xml") == 0 && (devname != NULL || usb))
 	   ret = SendPollResponse(conn);
 	else if (strcmp(url, "/devices.xml") == 0 && (devname != NULL || usb))
@@ -1021,9 +998,8 @@ int Webserver::respond_by_get_case (struct MHD_Connection *conn, const char *url
 
 // What does the return code indicate? !!
 int Webserver::Handler (struct MHD_Connection *conn, const char *url,
-		const char *method, const char *version, const char *up_data,
-		size_t *up_data_size, void **ptr)
-{
+								const char *method, const char *version, const char *up_data,
+								size_t *up_data_size, void **ptr) {
 	conninfo_t *cp;
 	if (debug)
 		fprintf(stderr, "%x: %s: \"%s\" conn=%x size=%d *ptr=%x\n",
@@ -1313,13 +1289,12 @@ int Webserver::Handler (struct MHD_Connection *conn, const char *url,
  * Free up any allocated data after connection closed
  */
 void Webserver::FreeEP (void *cls, struct MHD_Connection *conn,
-		void **ptr, enum MHD_RequestTerminationCode code)
-{
+								void **ptr, enum MHD_RequestTerminationCode code) {
 	Webserver *ws = (Webserver *)cls;
 	ws->Free(conn, ptr, code);
 }
-void Webserver::Free (struct MHD_Connection *conn, void **ptr, enum MHD_RequestTerminationCode code)
-{
+void Webserver::Free (struct MHD_Connection *conn, void **ptr,
+							 enum MHD_RequestTerminationCode code) {
 	conninfo_t *cp = (conninfo_t *)*ptr;
 	if (cp != NULL) {
 		if (cp->conn_arg1 != NULL)	free(cp->conn_arg1);
@@ -1335,8 +1310,7 @@ void Webserver::Free (struct MHD_Connection *conn, void **ptr, enum MHD_RequestT
  * Constructor
  * Start up the web server
  */
-Webserver::Webserver (int const wport) : sortcol(COL_NODE), logbytes(0), adminstate(false)
-{
+Webserver::Webserver (int const wport) : sortcol(COL_NODE), logbytes(0), adminstate(false) {
 	fprintf(stderr, "webserver starting port %d\n", wport);
 	port = wport;
 	wdata = MHD_start_daemon(MHD_USE_THREAD_PER_CONNECTION | MHD_USE_DEBUG, port,
@@ -1363,8 +1337,7 @@ Webserver::Webserver (int const wport) : sortcol(COL_NODE), logbytes(0), adminst
  * Destructor
  * Stop the web server
  */
-Webserver::~Webserver ()
-{
+Webserver::~Webserver () {
 	if (wdata != NULL) {
 		MHD_stop_daemon((MHD_Daemon *)wdata);
 		wdata = NULL;
