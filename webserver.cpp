@@ -138,13 +138,11 @@ int web_send_file (struct MHD_Connection *conn, const char *filename) {
 	int ret;
 	if ((p = strchr(filename, '.')) != NULL) {
 		p++;
-		if (strcmp(p, "xml") == 0)
-			ct = "text/xml";
-		else if (strcmp(p, "js") == 0)
-			ct = "text/javascript";
+		if (strcmp(p, "xml") == 0)	ct = "text/xml";
+		else if (strcmp(p, "js") == 0) ct = "text/javascript";
 	}
-	if (stat(filename, &buf) == -1 ||
-			((fp = fopen(filename, "r")) == NULL)) {
+	if (stat(filename, &buf) == -1
+		 || ((fp = fopen(filename, "r")) == NULL)) {
 		if (strcmp(p, "xml") == 0)
 			response = MHD_create_response_from_buffer(0, (void *) "", MHD_RESPMEM_PERSISTENT);
 		else {
@@ -155,11 +153,11 @@ int web_send_file (struct MHD_Connection *conn, const char *filename) {
 				exit(1);
 			}
 			snprintf(s, len, FNF, filename);
-			response = MHD_create_response_from_buffer(len, (void *) s, MHD_RESPMEM_MUST_FREE); // free
+			response = MHD_create_response_from_buffer(len, (void *) s, MHD_RESPMEM_MUST_FREE);
 		}
 	} else
-		response = MHD_create_response_from_callback(buf.st_size, 32 * 1024, &web_read_file, fp,
-				&web_close_file);
+		response = MHD_create_response_from_callback(buf.st_size, 32 * 1024, &web_read_file,
+																	fp, &web_close_file);
 	if (response == NULL)
 		return MHD_YES;
 	if (ct != NULL)
