@@ -1032,7 +1032,6 @@ int Webserver::HandlerEP (void *cls, struct MHD_Connection *conn, const char *ur
 		size_t *up_data_size, void **ptr)
 {
 	Webserver *ws = (Webserver *)cls;
-
 	return ws->Handler(conn, url, method, version, up_data, up_data_size, ptr);
 }
 // Process all the requests received via HTTP GET
@@ -1069,11 +1068,10 @@ int Webserver::Handler (struct MHD_Connection *conn, const char *url,
 		const char *method, const char *version, const char *up_data,
 		size_t *up_data_size, void **ptr)
 {
-	int ret;
 	conninfo_t *cp;
-
 	if (debug)
-		fprintf(stderr, "%x: %s: \"%s\" conn=%x size=%d *ptr=%x\n", pthread_self(), method, url, conn, *up_data_size, *ptr);
+		fprintf(stderr, "%x: %s: \"%s\" conn=%x size=%d *ptr=%x\n",
+				  pthread_self(), method, url, conn, *up_data_size, *ptr);
 	if (*ptr == NULL) {	/* do never respond on first call */
 		cp = (conninfo_t *)malloc(sizeof(conninfo_t));
 		if (cp == NULL)
@@ -1091,343 +1089,266 @@ int Webserver::Handler (struct MHD_Connection *conn, const char *url,
 				return MHD_NO;
 			}
 			cp->conn_type = CON_POST;
-		} else if (strcmp(method, MHD_HTTP_METHOD_GET) == 0) {
-			cp->conn_type = CON_GET;
-		} else {
-			free(cp);
-			return MHD_NO;
-		}
+		} else
+		   if (strcmp(method, MHD_HTTP_METHOD_GET) == 0) cp->conn_type = CON_GET;
+			else {
+			   free(cp);
+				return MHD_NO;
+			}
 		*ptr = (void *)cp;
 		return MHD_YES;
 	}
 	if (strcmp(method, MHD_HTTP_METHOD_GET) == 0) return(respond_by_get_case(conn,url));
 	else if (strcmp(method, MHD_HTTP_METHOD_POST) == 0) {
 		cp = (conninfo_t *)*ptr;
+		if (0 == *up_data_size) // no POST should be empty
+		   return web_send_data(conn, EMPTY, MHD_HTTP_OK, false, false, NULL);
+		MHD_post_process(cp->conn_pp, up_data, *up_data_size);
+
 		if (strcmp(url, "/devpost.html") == 0) {
-			if (*up_data_size != 0) {
-				MHD_post_process(cp->conn_pp, up_data, *up_data_size);
-				*up_data_size = 0;
-
-				if (strcmp((char *)cp->conn_arg1, "open") == 0) { /* start connection */
-					if (devname != NULL || usb) {
-						MyNode::setAllChanged(true);
-					} else {
-						if ((char *)cp->conn_arg3 != NULL && strcmp((char *)cp->conn_arg3, "true") == 0) {
-							Manager::Get()->AddDriver("HID Controller", Driver::ControllerInterface_Hid );
-							usb = true;
-						} else {
-							devname = (char *)malloc(strlen((char *)cp->conn_arg2) + 1);
-							if (devname == NULL) {
-								fprintf(stderr, "Out of memory open devname\n");
-								exit(1);
-							}
-							usb = false;
-							strcpy(devname, (char *)cp->conn_arg2);
-							Manager::Get()->AddDriver(devname);
-						}
-					}
-				} else if (strcmp((char *)cp->conn_arg1, "close") == 0) { /* terminate */
-					if (devname != NULL || usb)
-						Manager::Get()->RemoveDriver(devname ? devname : "HID Controller");
-					if (devname != NULL) {
-						free(devname);
-						devname = NULL;
-					}
-					usb = false;
-					homeId = 0;
-				} else if (strcmp((char *)cp->conn_arg1, "reset") == 0) { /* reset */
-					Manager::Get()->ResetController(homeId);
-				} else if (strcmp((char *)cp->conn_arg1, "sreset") == 0) { /* soft reset */
-					Manager::Get()->SoftReset(homeId);
-				} else if (strcmp((char *)cp->conn_arg1, "exit") == 0) { /* exit */
-					pthread_mutex_lock(&glock);
-					if (devname != NULL || usb) {
-						Manager::Get()->RemoveDriver(devname ? devname : "HID Controller");
-						free(devname);
-						devname = NULL;
-						homeId = 0;
-						usb = false;
-					}
-					done = true;						 // let main exit
-					pthread_mutex_unlock(&glock);
-				}
-				return MHD_YES;
-			} else
-				ret = web_send_data(conn, DEFAULT, MHD_HTTP_OK, false, false, NULL); // no free, no copy
-		} else if (strcmp(url, "/valuepost.html") == 0) {
-			if (*up_data_size != 0) {
-				MHD_post_process(cp->conn_pp, up_data, *up_data_size);
-				*up_data_size = 0;
-				MyValue *val = MyNode::lookup(string((char *)cp->conn_arg1));
-				if (val != NULL) {
-					string arg = (char *)cp->conn_arg2;
-					if (!Manager::Get()->SetValue(val->getId(), arg))
-						fprintf(stderr, "SetValue string failed type=%s\n", valueTypeStr(val->getId().GetType()));
+		  if (strcmp((char *)cp->conn_arg1, "open") == 0) { /* start connection */
+			 if (devname != NULL || usb) {
+				MyNode::setAllChanged(true);
+			 } else {
+				if ((char *)cp->conn_arg3 != NULL && strcmp((char *)cp->conn_arg3, "true") == 0) {
+				  Manager::Get()->AddDriver("HID Controller", Driver::ControllerInterface_Hid );
+				  usb = true;
 				} else {
-					fprintf(stderr, "Can't find ValueID for %s\n", (char *)cp->conn_arg1);
+				  devname = (char *)malloc(strlen((char *)cp->conn_arg2) + 1);
+				  if (devname == NULL) {
+					 fprintf(stderr, "Out of memory open devname\n");
+					 exit(1);
+				  }
+				  usb = false;
+				  strcpy(devname, (char *)cp->conn_arg2);
+				  Manager::Get()->AddDriver(devname);
 				}
-				return MHD_YES;
-			} else
-				ret = web_send_data(conn, EMPTY, MHD_HTTP_OK, false, false, NULL); // no free, no copy
+			 }
+		  } else if (strcmp((char *)cp->conn_arg1, "close") == 0) { /* terminate */
+			 if (devname != NULL || usb)
+				Manager::Get()->RemoveDriver(devname ? devname : "HID Controller");
+			 if (devname != NULL) {
+				free(devname);
+				devname = NULL;
+			 }
+			 usb = false;
+			 homeId = 0;
+		  } else if (strcmp((char *)cp->conn_arg1, "reset") == 0) { /* reset */
+			 Manager::Get()->ResetController(homeId);
+		  } else if (strcmp((char *)cp->conn_arg1, "sreset") == 0) { /* soft reset */
+			 Manager::Get()->SoftReset(homeId);
+		  } else if (strcmp((char *)cp->conn_arg1, "exit") == 0) { /* exit */
+			 pthread_mutex_lock(&glock);
+			 if (devname != NULL || usb) {
+				Manager::Get()->RemoveDriver(devname ? devname : "HID Controller");
+				free(devname);
+				devname = NULL;
+				homeId = 0;
+				usb = false;
+			 }
+			 done = true;						 // let main exit
+			 pthread_mutex_unlock(&glock);
+		  }
+		  return MHD_YES;
+		} else if (strcmp(url, "/valuepost.html") == 0) {
+		  MyValue *val = MyNode::lookup(string((char *)cp->conn_arg1));
+		  if (val != NULL) {
+			 string arg = (char *)cp->conn_arg2;
+			 if (!Manager::Get()->SetValue(val->getId(), arg))
+				fprintf(stderr, "SetValue string failed type=%s\n",
+						  valueTypeStr(val->getId().GetType()));
+		  } else {
+			 fprintf(stderr, "Can't find ValueID for %s\n", (char *)cp->conn_arg1);
+		  }
+		  return MHD_YES;
 		} else if (strcmp(url, "/buttonpost.html") == 0) {
-			if (*up_data_size != 0) {
-				MHD_post_process(cp->conn_pp, up_data, *up_data_size);
-				*up_data_size = 0;
-				MyValue *val = MyNode::lookup(string((char *)cp->conn_arg1));
-				if (val != NULL) {
-					string arg = (char *)cp->conn_arg2;
-					if ((char *)cp->conn_arg2 != NULL && strcmp((char *)cp->conn_arg2, "true") == 0) {
-						if (!Manager::Get()->PressButton(val->getId()))
-							fprintf(stderr, "PressButton failed");
-					} else {
-						if (!Manager::Get()->ReleaseButton(val->getId()))
-							fprintf(stderr, "ReleaseButton failed");
-					}
-				}
-				return MHD_YES;
-			} else
-				ret = web_send_data(conn, EMPTY, MHD_HTTP_OK, false, false, NULL); // no free, no copy
+		  MyValue *val = MyNode::lookup(string((char *)cp->conn_arg1));
+		  if (val != NULL) {
+			 string arg = (char *)cp->conn_arg2;
+			 if ((char *)cp->conn_arg2 != NULL && strcmp((char *)cp->conn_arg2, "true") == 0) {
+				if (!Manager::Get()->PressButton(val->getId()))
+				  fprintf(stderr, "PressButton failed");
+			 } else {
+				if (!Manager::Get()->ReleaseButton(val->getId()))
+				  fprintf(stderr, "ReleaseButton failed");
+			 }
+		  }
+		  return MHD_YES;
 		} else if (strcmp(url, "/scenepost.html") == 0) {
-			if (*up_data_size != 0) {
-				MHD_post_process(cp->conn_pp, up_data, *up_data_size);
-				*up_data_size = 0;
-				SendSceneResponse(conn, (char *)cp->conn_arg1, (char *)cp->conn_arg2, (char *)cp->conn_arg3, (char *)cp->conn_arg4);
-				return MHD_YES;
-			} else
-				ret = web_send_file(conn, (char *)cp->conn_res, MHD_HTTP_OK, true);
+		  SendSceneResponse(conn, (char *)cp->conn_arg1, (char *)cp->conn_arg2,
+								  (char *)cp->conn_arg3, (char *)cp->conn_arg4);
+		  return MHD_YES;
 		} else if (strcmp(url, "/topopost.html") == 0) {
-			if (*up_data_size != 0) {
-				MHD_post_process(cp->conn_pp, up_data, *up_data_size);
-				*up_data_size = 0;
-				SendTopoResponse(conn,(char *)cp->conn_arg1,(char *)cp->conn_arg2,
-									  (char *)cp->conn_arg3, (char *)cp->conn_arg4);
-				//cp->conn_res = (void *)SendTopoResponse(conn, (char *)cp->conn_arg1, (char *)cp->conn_arg2, (char *)cp->conn_arg3, (char *)cp->conn_arg4);
-				return MHD_YES;
-			} else // HOW CAN cp->conn_res possibly be non-null here?...
-				ret = web_send_file(conn, (char *)cp->conn_res, MHD_HTTP_OK, true);
+		  SendTopoResponse(conn,(char *)cp->conn_arg1,(char *)cp->conn_arg2,
+								 (char *)cp->conn_arg3, (char *)cp->conn_arg4);
+		  return MHD_YES;
 		} else if (strcmp(url, "/statpost.html") == 0) {
-			if (*up_data_size != 0) {
-				MHD_post_process(cp->conn_pp, up_data, *up_data_size);
-				*up_data_size = 0;
-
-				SendStatResponse(conn, (char *)cp->conn_arg1, (char *)cp->conn_arg2, (char *)cp->conn_arg3, (char *)cp->conn_arg4);
-			} else
-				ret = web_send_file(conn, (char *)cp->conn_res, MHD_HTTP_OK, true);
+		  SendStatResponse(conn, (char *)cp->conn_arg1, (char *)cp->conn_arg2, (char *)cp->conn_arg3, (char *)cp->conn_arg4);
 			return MHD_YES;
 		} else if (strcmp(url, "/thpost.html") == 0) {
-			if (*up_data_size != 0) {
-				MHD_post_process(cp->conn_pp, up_data, *up_data_size);
-				*up_data_size = 0;
-
-				SendTestHealResponse(conn, (char *)cp->conn_arg1, (char *)cp->conn_arg2, (char *)cp->conn_arg3, (char *)cp->conn_arg4);
-				return MHD_YES;
-			} else
-				ret = web_send_file(conn, (char *)cp->conn_res, MHD_HTTP_OK, true);
+		  SendTestHealResponse(conn, (char *)cp->conn_arg1, (char *)cp->conn_arg2, (char *)cp->conn_arg3, (char *)cp->conn_arg4);
+		  return MHD_YES;
 		} else if (strcmp(url, "/confparmpost.html") == 0) {
-			if (*up_data_size != 0) {
-				MHD_post_process(cp->conn_pp, up_data, *up_data_size);
-				*up_data_size = 0;
-				if (cp->conn_arg2 != NULL && strlen((char *)cp->conn_arg2) > 0) {
-					uint8 node = strtol((char *)cp->conn_arg2, NULL, 10);
-					Manager::Get()->RequestAllConfigParams(homeId, node);
-				}
-				return MHD_YES;
-			} else
-				ret = web_send_data(conn, EMPTY, MHD_HTTP_OK, false, false, NULL); // no free, no copy
+		  if (cp->conn_arg2 != NULL && strlen((char *)cp->conn_arg2) > 0) {
+			 uint8 node = strtol((char *)cp->conn_arg2, NULL, 10);
+			 Manager::Get()->RequestAllConfigParams(homeId, node);
+		  }
+		  return MHD_YES;
 		} else if (strcmp(url, "/refreshpost.html") == 0) {
-			if (*up_data_size != 0) {
-				MHD_post_process(cp->conn_pp, up_data, *up_data_size);
-				*up_data_size = 0;
-				if (cp->conn_arg2 != NULL && strlen((char *)cp->conn_arg2) > 0) {
-					uint8 node = strtol((char *)cp->conn_arg2, NULL, 10);
-					Manager::Get()->RequestNodeDynamic(homeId, node);
-				}
-				return MHD_YES;
-			} else
-				ret = web_send_data(conn, EMPTY, MHD_HTTP_OK, false, false, NULL); // no free, no copy
+		  if (cp->conn_arg2 != NULL && strlen((char *)cp->conn_arg2) > 0) {
+			 uint8 node = strtol((char *)cp->conn_arg2, NULL, 10);
+			 Manager::Get()->RequestNodeDynamic(homeId, node);
+		  }
+		  return MHD_YES;
 		} else if (strcmp(url, "/admpost.html") == 0) {
-			if (*up_data_size != 0) {
-				MHD_post_process(cp->conn_pp, up_data, *up_data_size);
-				*up_data_size = 0;
-
-				if (strcmp((char *)cp->conn_arg1, "cancel") == 0) { /* cancel controller function */
-					Manager::Get()->CancelControllerCommand(homeId);
-					setAdminState(false);
-				} else if (strcmp((char *)cp->conn_arg1, "addd") == 0) {
-					setAdminFunction("Add Device");
-					setAdminState(Manager::Get()->AddNode(homeId, false));
-				} else if (strcmp((char *)cp->conn_arg1, "addds") == 0) {
-					setAdminFunction("Add Device");
-					setAdminState(Manager::Get()->AddNode(homeId, true));
-				} else if (strcmp((char *)cp->conn_arg1, "cprim") == 0) {
-					setAdminFunction("Create Primary");
-					setAdminState(Manager::Get()->CreateNewPrimary(homeId));
-				} else if (strcmp((char *)cp->conn_arg1, "rconf") == 0) {
-					setAdminFunction("Receive Configuration");
-					setAdminState(Manager::Get()->ReceiveConfiguration(homeId));
-				} else if (strcmp((char *)cp->conn_arg1, "remd") == 0) {
-					setAdminFunction("Remove Device");
-					setAdminState(Manager::Get()->RemoveNode(homeId));
-				} else if (strcmp((char *)cp->conn_arg1, "hnf") == 0) {
-					if (cp->conn_arg2 != NULL && strlen((char *)cp->conn_arg2) > 4) {
-						uint8 node = strtol(((char *)cp->conn_arg2) + 4, NULL, 10);
-						setAdminFunction("Has Node Failed");
-						setAdminState(Manager::Get()->HasNodeFailed(homeId, node));
-					}
-				} else if (strcmp((char *)cp->conn_arg1, "remfn") == 0) {
-					if (cp->conn_arg2 != NULL && strlen((char *)cp->conn_arg2) > 4) {
-						uint8 node = strtol(((char *)cp->conn_arg2) + 4, NULL, 10);
-						setAdminFunction("Remove Failed Node");
-						setAdminState(Manager::Get()->RemoveFailedNode(homeId, node));
-					}
-				} else if (strcmp((char *)cp->conn_arg1, "repfn") == 0) {
-					if (cp->conn_arg2 != NULL && strlen((char *)cp->conn_arg2) > 4) {
-						uint8 node = strtol(((char *)cp->conn_arg2) + 4, NULL, 10);
-						setAdminFunction("Replace Failed Node");
-						setAdminState(Manager::Get()->ReplaceFailedNode(homeId, node));
-					}
-				} else if (strcmp((char *)cp->conn_arg1, "tranpr") == 0) {
-					setAdminFunction("Transfer Primary Role");
-					setAdminState(Manager::Get()->TransferPrimaryRole(homeId));
-				} else if (strcmp((char *)cp->conn_arg1, "reqnu") == 0) {
-					if (cp->conn_arg2 != NULL && strlen((char *)cp->conn_arg2) > 4) {
-						uint8 node = strtol(((char *)cp->conn_arg2) + 4, NULL, 10);
-						setAdminFunction("Request Network Update");
-						setAdminState(Manager::Get()->RequestNetworkUpdate(homeId, node));
-					}
-				} else if (strcmp((char *)cp->conn_arg1, "reqnnu") == 0) {
-					if (cp->conn_arg2 != NULL && strlen((char *)cp->conn_arg2) > 4) {
-						uint8 node = strtol(((char *)cp->conn_arg2) + 4, NULL, 10);
-						setAdminFunction("Request Node Neighbor Update");
-						setAdminState(Manager::Get()->RequestNodeNeighborUpdate(homeId, node));
-					}
-				} else if (strcmp((char *)cp->conn_arg1, "assrr") == 0) {
-					if (cp->conn_arg2 != NULL && strlen((char *)cp->conn_arg2) > 4) {
-						uint8 node = strtol(((char *)cp->conn_arg2) + 4, NULL, 10);
-						setAdminFunction("Assign Return Route");
-						setAdminState(Manager::Get()->AssignReturnRoute(homeId, node));
-					}
-				} else if (strcmp((char *)cp->conn_arg1, "delarr") == 0) {
-					if (cp->conn_arg2 != NULL && strlen((char *)cp->conn_arg2) > 4) {
-						uint8 node = strtol(((char *)cp->conn_arg2) + 4, NULL, 10);
-						setAdminFunction("Delete All Return Routes");
-						setAdminState(Manager::Get()->DeleteAllReturnRoutes(homeId, node));
-					}
-				} else if (strcmp((char *)cp->conn_arg1, "snif") == 0) {
-					if (cp->conn_arg2 != NULL && strlen((char *)cp->conn_arg2) > 4) {
-						uint8 node = strtol(((char *)cp->conn_arg2) + 4, NULL, 10);
-						setAdminFunction("Send Node Information");
-						setAdminState(Manager::Get()->SendNodeInformation(homeId, node));
-					}
-				} else if (strcmp((char *)cp->conn_arg1, "reps") == 0) {
-					if (cp->conn_arg2 != NULL && strlen((char *)cp->conn_arg2) > 4) {
-						uint8 node = strtol(((char *)cp->conn_arg2) + 4, NULL, 10);
-						setAdminFunction("Replication Send");
-						setAdminState(Manager::Get()->ReplicationSend(homeId, node));
-					}
-				} else if (strcmp((char *)cp->conn_arg1, "addbtn") == 0) {
-					if (cp->conn_arg2 != NULL && strlen((char *)cp->conn_arg2) > 4 &&
-							cp->conn_arg3 != NULL) {
-						uint8 node = strtol(((char *)cp->conn_arg2) + 4, NULL, 10);
-						uint8 button = strtol(((char *)cp->conn_arg3), NULL, 10);
-						setAdminFunction("Add Button");
-						setAdminState(Manager::Get()->CreateButton(homeId, node, button));
-					}
-				} else if (strcmp((char *)cp->conn_arg1, "delbtn") == 0) {
-					if (cp->conn_arg2 != NULL && strlen((char *)cp->conn_arg2) > 4 &&
-							cp->conn_arg3 != NULL) {
-						uint8 node = strtol(((char *)cp->conn_arg2) + 4, NULL, 10);
-						uint8 button = strtol(((char *)cp->conn_arg3), NULL, 10);
-						setAdminFunction("Delete Button");
-						setAdminState(Manager::Get()->DeleteButton(homeId, node, button));
-					}
-				} else if (strcmp((char *)cp->conn_arg1, "refreshnode") == 0) {
-					if (cp->conn_arg2 != NULL && strlen((char *)cp->conn_arg2) > 4) {
-						uint8 node = strtol(((char *)cp->conn_arg2) + 4, NULL, 10);
-						Manager::Get()->RefreshNodeInfo(homeId, node);
-					}
-				}
-
-				return MHD_YES;
-			} else
-				ret = web_send_data(conn, EMPTY, MHD_HTTP_OK, false, false, NULL); // no free, no copy
+		  if (strcmp((char *)cp->conn_arg1, "cancel") == 0) { /* cancel controller function */
+			 Manager::Get()->CancelControllerCommand(homeId);
+			 setAdminState(false);
+		  } else if (strcmp((char *)cp->conn_arg1, "addd") == 0) {
+			 setAdminFunction("Add Device");
+			 setAdminState(Manager::Get()->AddNode(homeId, false));
+		  } else if (strcmp((char *)cp->conn_arg1, "addds") == 0) {
+			 setAdminFunction("Add Device");
+			 setAdminState(Manager::Get()->AddNode(homeId, true));
+		  } else if (strcmp((char *)cp->conn_arg1, "cprim") == 0) {
+			 setAdminFunction("Create Primary");
+			 setAdminState(Manager::Get()->CreateNewPrimary(homeId));
+		  } else if (strcmp((char *)cp->conn_arg1, "rconf") == 0) {
+			 setAdminFunction("Receive Configuration");
+			 setAdminState(Manager::Get()->ReceiveConfiguration(homeId));
+		  } else if (strcmp((char *)cp->conn_arg1, "remd") == 0) {
+			 setAdminFunction("Remove Device");
+			 setAdminState(Manager::Get()->RemoveNode(homeId));
+		  } else if (strcmp((char *)cp->conn_arg1, "hnf") == 0) {
+			 if (cp->conn_arg2 != NULL && strlen((char *)cp->conn_arg2) > 4) {
+				uint8 node = strtol(((char *)cp->conn_arg2) + 4, NULL, 10);
+				setAdminFunction("Has Node Failed");
+				setAdminState(Manager::Get()->HasNodeFailed(homeId, node));
+			 }
+		  } else if (strcmp((char *)cp->conn_arg1, "remfn") == 0) {
+			 if (cp->conn_arg2 != NULL && strlen((char *)cp->conn_arg2) > 4) {
+				uint8 node = strtol(((char *)cp->conn_arg2) + 4, NULL, 10);
+				setAdminFunction("Remove Failed Node");
+				setAdminState(Manager::Get()->RemoveFailedNode(homeId, node));
+			 }
+		  } else if (strcmp((char *)cp->conn_arg1, "repfn") == 0) {
+			 if (cp->conn_arg2 != NULL && strlen((char *)cp->conn_arg2) > 4) {
+				uint8 node = strtol(((char *)cp->conn_arg2) + 4, NULL, 10);
+				setAdminFunction("Replace Failed Node");
+				setAdminState(Manager::Get()->ReplaceFailedNode(homeId, node));
+			 }
+		  } else if (strcmp((char *)cp->conn_arg1, "tranpr") == 0) {
+			 setAdminFunction("Transfer Primary Role");
+			 setAdminState(Manager::Get()->TransferPrimaryRole(homeId));
+		  } else if (strcmp((char *)cp->conn_arg1, "reqnu") == 0) {
+			 if (cp->conn_arg2 != NULL && strlen((char *)cp->conn_arg2) > 4) {
+				uint8 node = strtol(((char *)cp->conn_arg2) + 4, NULL, 10);
+				setAdminFunction("Request Network Update");
+				setAdminState(Manager::Get()->RequestNetworkUpdate(homeId, node));
+			 }
+		  } else if (strcmp((char *)cp->conn_arg1, "reqnnu") == 0) {
+			 if (cp->conn_arg2 != NULL && strlen((char *)cp->conn_arg2) > 4) {
+				uint8 node = strtol(((char *)cp->conn_arg2) + 4, NULL, 10);
+				setAdminFunction("Request Node Neighbor Update");
+				setAdminState(Manager::Get()->RequestNodeNeighborUpdate(homeId, node));
+			 }
+		  } else if (strcmp((char *)cp->conn_arg1, "assrr") == 0) {
+			 if (cp->conn_arg2 != NULL && strlen((char *)cp->conn_arg2) > 4) {
+				uint8 node = strtol(((char *)cp->conn_arg2) + 4, NULL, 10);
+				setAdminFunction("Assign Return Route");
+				setAdminState(Manager::Get()->AssignReturnRoute(homeId, node));
+			 }
+		  } else if (strcmp((char *)cp->conn_arg1, "delarr") == 0) {
+			 if (cp->conn_arg2 != NULL && strlen((char *)cp->conn_arg2) > 4) {
+				uint8 node = strtol(((char *)cp->conn_arg2) + 4, NULL, 10);
+				setAdminFunction("Delete All Return Routes");
+				setAdminState(Manager::Get()->DeleteAllReturnRoutes(homeId, node));
+			 }
+		  } else if (strcmp((char *)cp->conn_arg1, "snif") == 0) {
+			 if (cp->conn_arg2 != NULL && strlen((char *)cp->conn_arg2) > 4) {
+				uint8 node = strtol(((char *)cp->conn_arg2) + 4, NULL, 10);
+				setAdminFunction("Send Node Information");
+				setAdminState(Manager::Get()->SendNodeInformation(homeId, node));
+			 }
+		  } else if (strcmp((char *)cp->conn_arg1, "reps") == 0) {
+			 if (cp->conn_arg2 != NULL && strlen((char *)cp->conn_arg2) > 4) {
+				uint8 node = strtol(((char *)cp->conn_arg2) + 4, NULL, 10);
+				setAdminFunction("Replication Send");
+				setAdminState(Manager::Get()->ReplicationSend(homeId, node));
+			 }
+		  } else if (strcmp((char *)cp->conn_arg1, "addbtn") == 0) {
+			 if (cp->conn_arg2 != NULL && strlen((char *)cp->conn_arg2) > 4 &&
+				  cp->conn_arg3 != NULL) {
+				uint8 node = strtol(((char *)cp->conn_arg2) + 4, NULL, 10);
+				uint8 button = strtol(((char *)cp->conn_arg3), NULL, 10);
+				setAdminFunction("Add Button");
+				setAdminState(Manager::Get()->CreateButton(homeId, node, button));
+			 }
+		  } else if (strcmp((char *)cp->conn_arg1, "delbtn") == 0) {
+			 if (cp->conn_arg2 != NULL && strlen((char *)cp->conn_arg2) > 4 &&
+				  cp->conn_arg3 != NULL) {
+				uint8 node = strtol(((char *)cp->conn_arg2) + 4, NULL, 10);
+				uint8 button = strtol(((char *)cp->conn_arg3), NULL, 10);
+				setAdminFunction("Delete Button");
+				setAdminState(Manager::Get()->DeleteButton(homeId, node, button));
+			 }
+		  } else if (strcmp((char *)cp->conn_arg1, "refreshnode") == 0) {
+			 if (cp->conn_arg2 != NULL && strlen((char *)cp->conn_arg2) > 4) {
+				uint8 node = strtol(((char *)cp->conn_arg2) + 4, NULL, 10);
+				Manager::Get()->RefreshNodeInfo(homeId, node);
+			 }
+		  }
+		  return MHD_YES;
 		} else if (strcmp(url, "/nodepost.html") == 0) {
-			if (*up_data_size != 0) {
-				uint8 node;
-
-				MHD_post_process(cp->conn_pp, up_data, *up_data_size);
-				*up_data_size = 0;
-
-				if (cp->conn_arg2 != NULL && strlen((char *)cp->conn_arg2) > 4 && cp->conn_arg3 != NULL) {
-					node = strtol(((char *)cp->conn_arg2) + 4, NULL, 10);
-					if (strcmp((char *)cp->conn_arg1, "nam") == 0) { /* Node naming */
-						Manager::Get()->SetNodeName(homeId, node, (char *)cp->conn_arg3);
-					} else if (strcmp((char *)cp->conn_arg1, "loc") == 0) { /* Node location */
-						Manager::Get()->SetNodeLocation(homeId, node, (char *)cp->conn_arg3);
-					} else if (strcmp((char *)cp->conn_arg1, "pol") == 0) { /* Node polling */
-					}
+		   uint8 node;
+			if (cp->conn_arg2 != NULL && strlen((char *)cp->conn_arg2) > 4 && cp->conn_arg3 != NULL) {
+			   node = strtol(((char *)cp->conn_arg2) + 4, NULL, 10);
+				if (strcmp((char *)cp->conn_arg1, "nam") == 0) { /* Node naming */
+				   Manager::Get()->SetNodeName(homeId, node, (char *)cp->conn_arg3);
+				} else if (strcmp((char *)cp->conn_arg1, "loc") == 0) { /* Node location */
+				   Manager::Get()->SetNodeLocation(homeId, node, (char *)cp->conn_arg3);
+				} else if (strcmp((char *)cp->conn_arg1, "pol") == 0) { /* Node polling */
+				  // !! HEY WTF?
 				}
-				return MHD_YES;
-			} else
-				ret = web_send_data(conn, EMPTY, MHD_HTTP_OK, false, false, NULL); // no free, no copy
+			}
+			return MHD_YES;
 		} else if (strcmp(url, "/grouppost.html") == 0) {
-			if (*up_data_size != 0) {
-				uint8 node;
-				uint8 grp;
-
-				MHD_post_process(cp->conn_pp, up_data, *up_data_size);
-				*up_data_size = 0;
-
-				if (cp->conn_arg2 != NULL && strlen((char *)cp->conn_arg2) > 4 &&
-						cp->conn_arg3 != NULL && strlen((char *)cp->conn_arg3) > 0) {
-					node = strtol(((char *)cp->conn_arg2) + 4, NULL, 10);
-					grp = strtol((char *)cp->conn_arg3, NULL, 10);
-					if (strcmp((char *)cp->conn_arg1, "group") == 0) { /* Group update */
-						pthread_mutex_lock(&nlock);
-						nodes[node]->updateGroup(node, grp, (char *)cp->conn_arg4);
-						pthread_mutex_unlock(&nlock);
-					}
+			uint8 node;
+			uint8 grp;
+			if (cp->conn_arg2 != NULL && strlen((char *)cp->conn_arg2) > 4 &&
+				 cp->conn_arg3 != NULL && strlen((char *)cp->conn_arg3) > 0) {
+			   node = strtol(((char *)cp->conn_arg2) + 4, NULL, 10);
+				grp = strtol((char *)cp->conn_arg3, NULL, 10);
+				if (strcmp((char *)cp->conn_arg1, "group") == 0) { /* Group update */
+				   pthread_mutex_lock(&nlock);
+					nodes[node]->updateGroup(node, grp, (char *)cp->conn_arg4);
+					pthread_mutex_unlock(&nlock);
 				}
-				return MHD_YES;
-			} else
-				ret = web_send_data(conn, EMPTY, MHD_HTTP_OK, false, false, NULL); // no free, no copy
+			}
+			return MHD_YES;
 		} else if (strcmp(url, "/pollpost.html") == 0) {
-			if (*up_data_size != 0) {
-				uint8 node;
-
-				MHD_post_process(cp->conn_pp, up_data, *up_data_size);
-				*up_data_size = 0;
-
-				if (cp->conn_arg2 != NULL && strlen((char *)cp->conn_arg2) > 0 &&
-						cp->conn_arg3 != NULL && strlen((char *)cp->conn_arg3) > 0 &&
-						cp->conn_arg4 != NULL && strlen((char *)cp->conn_arg4) > 0) {
-					node = strtol(((char *)cp->conn_arg2) + 4, NULL, 10) + 1;
-					if (strcmp((char *)cp->conn_arg1, "poll") == 0) { /* Poll update */
-						pthread_mutex_lock(&nlock);
-						nodes[node]->updatePoll((char *)cp->conn_arg3, (char *)cp->conn_arg4);
-						pthread_mutex_unlock(&nlock);
-					}
+			uint8 node;
+			if (cp->conn_arg2 != NULL && strlen((char *)cp->conn_arg2) > 0 &&
+				 cp->conn_arg3 != NULL && strlen((char *)cp->conn_arg3) > 0 &&
+				 cp->conn_arg4 != NULL && strlen((char *)cp->conn_arg4) > 0) {
+			   node = strtol(((char *)cp->conn_arg2) + 4, NULL, 10) + 1;
+				if (strcmp((char *)cp->conn_arg1, "poll") == 0) { /* Poll update */
+				   pthread_mutex_lock(&nlock);
+					nodes[node]->updatePoll((char *)cp->conn_arg3, (char *)cp->conn_arg4);
+					pthread_mutex_unlock(&nlock);
 				}
-				return MHD_YES;
-			} else
-				ret = web_send_data(conn, EMPTY, MHD_HTTP_OK, false, false, NULL); // no free, no copy
+			}
+			return MHD_YES;
 		} else if (strcmp(url, "/savepost.html") == 0) {
-			if (*up_data_size != 0) {
-				MHD_post_process(cp->conn_pp, up_data, *up_data_size);
-				*up_data_size = 0;
-
-				if (strcmp((char *)cp->conn_arg1, "save") == 0) { /* Save config */
-					Manager::Get()->WriteConfig(homeId);
-					pthread_mutex_lock(&glock);
-					needsave = false;
-					pthread_mutex_unlock(&glock);
-				}
-				return MHD_YES;
-			} else
-				ret = web_send_data(conn, EMPTY, MHD_HTTP_OK, false, false, NULL); // no free, no copy
+		   if (strcmp((char *)cp->conn_arg1, "save") == 0) { /* Save config */
+			   Manager::Get()->WriteConfig(homeId);
+				pthread_mutex_lock(&glock);
+				needsave = false;
+				pthread_mutex_unlock(&glock);
+			}
+			return MHD_YES;
 		} else
-			ret = web_send_data(conn, UNKNOWN, MHD_HTTP_NOT_FOUND, false, false, NULL); // no free, no copy
-		return ret;
+		  return web_send_data(conn, UNKNOWN, MHD_HTTP_NOT_FOUND, false, false, NULL);
 	} else
 		return MHD_NO;
 } // int Webserver::Handler
