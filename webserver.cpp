@@ -96,6 +96,7 @@ extern char *cmode;
 extern bool noop;
 extern int debug;
 
+
 /*
  * web_send_data
  * Send internal HTML string
@@ -191,12 +192,35 @@ int web_send_file (struct MHD_Connection *conn, const char *filename, const int 
 		unlink(filename);
 	return ret;
 }
-
+int web_send_blob (struct MHD_Connection *conn, const char *blob, const int code,
+						 const char* contentType, MHD_ResponseMemoryMode bufMode)
+{
+   const char *ct;
+	//   int ret;
+	struct MHD_Response *response;
+	response = MHD_create_response_from_buffer(strlen(blob), (void *) blob, bufMode);
+	if (strcmp(contentType, "xml") == 0)	ct = "text/xml";
+	else if (strcmp(contentType, "js") == 0) ct = "text/javascript";
+	if (ct != NULL) MHD_add_response_header(response, "Content-type", ct);
+	int ret = MHD_queue_response(conn, code, response);
+	MHD_destroy_response(response);
+	return ret;
+}
+/*
+ * web_send_xml
+ * Send TiXmlDocument from memory
+ */
+int web_send_xml (struct MHD_Connection *conn, TiXmlDocument &doc) {
+	TiXmlPrinter p;	p.SetIndent("\t");
+	doc.Accept(&p);
+	const char *xmlblob = p.CStr(); // const?  Really?  Investigate!! but so, persist...
+	if (debug) fprintf(stderr,"The Blob:\n%s\n\n",xmlblob);
+	return web_send_blob(conn, xmlblob, MHD_HTTP_OK, "xml", MHD_RESPMEM_PERSISTENT);
+}
 /*
  * web_get_groups
  * Return some XML to carry node group associations
  */
-
 void Webserver::web_get_groups (int n, TiXmlElement *ep)
 {
 	int cnt = nodes[n]->numGroups();
@@ -288,19 +312,11 @@ void Webserver::web_get_values (int i, TiXmlElement *ep)
  * SendTopoResponse
  * Process topology request and return appropiate data
  */
-
-const char *Webserver::SendTopoResponse (struct MHD_Connection *conn, const char *fun,
+int Webserver::SendTopoResponse (struct MHD_Connection *conn, const char *fun,
 		const char *arg1, const char *arg2, const char *arg3)
 {
 	TiXmlDocument doc;
 	char str[16];
-	static char fntemp[32];
-#ifdef NO_MKSTEMPS
-	char *fn;
-#else
-	int fd;
-	FILE *fs;
-#endif
 	uint i, j, k;
 	uint8 cnt;
 	uint32 len;
@@ -339,26 +355,8 @@ const char *Webserver::SendTopoResponse (struct MHD_Connection *conn, const char
 			i++;
 		}
 	}
-#ifdef NO_MKSTEMPS
-	strncpy(fntemp, "/tmp/ozwcp.topo.XXXXXX", sizeof(fntemp));
-	fn = mktemp(fntemp);
-	if (fn == NULL)
-		return EMPTY;
-	strncat(fntemp, ".xml", sizeof(fntemp));
-	doc.SaveFile(fn);
-#else
-	strncpy(fntemp, "/tmp/ozwcp.topo.XXXXXX.xml", sizeof(fntemp));
-	fd = mkstemps(fntemp,4);
-	if (fd == -1)
-		return EMPTY;
-	fs = fdopen(fd,"w");
-	if (debug)
-		doc.Print(stdout, 0);
-	doc.SaveFile(fs);
-	fclose(fs);
-#endif
-	return fntemp;
-}
+	return web_send_xml(conn,doc);
+} // int Webserver::SendTopoResponse
 
 static TiXmlElement *newstat (char const *tag, char const *label, uint32 const value)
 {
@@ -385,19 +383,10 @@ static TiXmlElement *newstat (char const *tag, char const *label, char const *va
  * SendStatResponse
  * Process statistics request and return appropiate data
  */
-
-const char *Webserver::SendStatResponse (struct MHD_Connection *conn, const char *fun,
+int Webserver::SendStatResponse (struct MHD_Connection *conn, const char *fun,
 		const char *arg1, const char *arg2, const char *arg3)
 {
 	TiXmlDocument doc;
-	static char fntemp[32];
-#ifdef NO_MKSTEMPS
-	char *fn;
-#else
-	int fd;
-	FILE *fs;
-#endif
-
 	TiXmlDeclaration* decl = new TiXmlDeclaration( "1.0", "utf-8", "" );
 	doc.LinkEndChild(decl);
 	TiXmlElement* statElement = new TiXmlElement("stats");
@@ -482,49 +471,20 @@ const char *Webserver::SendStatResponse (struct MHD_Connection *conn, const char
 			i++;
 		}
 	}
-#ifdef NO_MKSTEMPS
-	strncpy(fntemp, "/tmp/ozwcp.stat.XXXXXX", sizeof(fntemp));
-	fn = mktemp(fntemp);
-	if (fn == NULL)
-	  return EMPTY;
-	strncat(fntemp, ".xml", sizeof(fntemp));
-	if (debug)
-	  doc.Print(stdout, 0);
-	doc.SaveFile(fn);
-#else
-	strncpy(fntemp, "/tmp/ozwcp.stat.XXXXXX.xml", sizeof(fntemp));
-	fd = mkstemps(fntemp,4);
-	if (fd == -1)
-		return EMPTY;
-	fs = fdopen(fd,"w");
-	if (debug)
-		doc.Print(stdout, 0);
-	doc.SaveFile(fs);
-	fclose(fs);
-#endif
-	return fntemp;
-}
+	return web_send_xml(conn,doc);
+} // int Webserver::SendStatResponse
 
 /*
  * SendTestHealResponse
  * Process network test and heal requests
  */
-
-const char *Webserver::SendTestHealResponse (struct MHD_Connection *conn, const char *fun,
+int Webserver::SendTestHealResponse (struct MHD_Connection *conn, const char *fun,
 		const char *arg1, const char *arg2, const char *arg3)
 {
 	TiXmlDocument doc;
 	int node;
 	int arg;
 	bool healrrs = false;
-	static char fntemp[32];
-#ifdef NO_MKSTEMPS
-	char *fn;
-#else
-	int fd;
-	FILE *fs;
-#endif
-
 	TiXmlDeclaration* decl = new TiXmlDeclaration( "1.0", "utf-8", "" );
 	doc.LinkEndChild(decl);
 	TiXmlElement* testElement = new TiXmlElement("testheal");
@@ -550,48 +510,18 @@ const char *Webserver::SendTestHealResponse (struct MHD_Connection *conn, const 
 		else
 			Manager::Get()->HealNetworkNode(homeId, node, healrrs);
 	}
-
-#ifdef NO_MKSTEMPS
-	strncpy(fntemp, "/tmp/ozwcp.testheal.XXXXXX", sizeof(fntemp));
-	fn = mktemp(fntemp);
-	if (fn == NULL)
-	  return EMPTY;
-	strncat(fntemp, ".xml", sizeof(fntemp));
-	if (debug)
-	  doc.Print(stdout, 0);
-	doc.SaveFile(fn);
-#else
-	strncpy(fntemp, "/tmp/ozwcp.topo.XXXXXX.xml", sizeof(fntemp));
-	fd = mkstemps(fntemp,4);
-	if (fd == -1)
-		return EMPTY;
-	fs = fdopen(fd,"w");
-	if (debug)
-		doc.Print(stdout, 0);
-	doc.SaveFile(fs);
-	fclose(fs);
-#endif
-	return fntemp;
-}
-
+	return web_send_xml(conn,doc);
+} // int Webserver::SendTestHealResponse
 /*
  * SendSceneResponse
  * Process scene request and return appropiate scene data
  */
-
-const char *Webserver::SendSceneResponse (struct MHD_Connection *conn, const char *fun,
+int Webserver::SendSceneResponse (struct MHD_Connection *conn, const char *fun,
 		const char *arg1, const char *arg2, const char *arg3)
 {
 	TiXmlDocument doc;
 	char str[16];
 	string s;
-	static char fntemp[32];
-#ifdef NO_MKSTEMPS
-	char *fn;
-#else
-	int fd;
-	FILE *fs;
-#endif
 	int cnt;
 	int i;
 	uint8 sid;
@@ -604,7 +534,7 @@ const char *Webserver::SendSceneResponse (struct MHD_Connection *conn, const cha
 		sid = Manager::Get()->CreateScene();
 		if (sid == 0) {
 			fprintf(stderr, "sid = 0, out of scene ids\n");
-			return EMPTY;
+			return web_send_data(conn, EMPTY, MHD_HTTP_OK, false, false, NULL); // no free, no copy
 		}
 	}
 	if (strcmp(fun, "values") == 0 ||
@@ -682,29 +612,8 @@ const char *Webserver::SendSceneResponse (struct MHD_Connection *conn, const cha
 			scenesElement->LinkEndChild(valueElement);
 		}
 	}
-#ifdef NO_MKSTEMPS
-	strncpy(fntemp, "/tmp/ozwcp.scenes.XXXXXX", sizeof(fntemp));
-	fn = mktemp(fntemp);
-	if (fn == NULL)
-	  return EMPTY;
-	strncat(fntemp, ".xml", sizeof(fntemp));
-	if (debug)
-	  doc.Print(stdout, 0);
-	doc.SaveFile(fn);
-#else
-	strncpy(fntemp, "/tmp/ozwcp.scenes.XXXXXX.xml", sizeof(fntemp));
-	fd = mkstemps(fntemp,4);
-	if (fd == -1)
-		return EMPTY;
-	fs = fdopen(fd,"w");
-	if (debug)
-		doc.Print(stdout, 0);
-	doc.SaveFile(fs);
-	fclose(fs);
-#endif
-	return fntemp;
-}
-
+	return web_send_xml(conn,doc);
+} // int Webserver::SendSceneResponse
 /*
  * SendPollResponse
  * Process poll request from client and return
@@ -720,16 +629,7 @@ int Webserver::SendPollResponse (struct MHD_Connection *conn)
 	char str[16];
 	int32 i, j;
 	int32 logread = 0;
-	char fntemp[32];
-#ifdef NO_MKSTEMPS
-	char *fn;
-#else
-	int fd;
-	FILE *fs;
-#endif
 	FILE *fp;
-	int32 ret;
-
 	TiXmlDeclaration* decl = new TiXmlDeclaration( "1.0", "utf-8", "" );
 	doc.LinkEndChild(decl);
 	TiXmlElement* pollElement = new TiXmlElement("poll");
@@ -866,29 +766,8 @@ int Webserver::SendPollResponse (struct MHD_Connection *conn)
 		}
 	}
 	pthread_mutex_unlock(&nlock);
-#ifdef NO_MKSTEMPS
-	strncpy(fntemp, "/tmp/ozwcp.poll.XXXXXX", sizeof(fntemp));
-	fn = mktemp(fntemp);
-	if (fn == NULL)
-	  return MHD_YES;
-	strncat(fntemp, ".xml", sizeof(fntemp));
-	if (debug)
-	  doc.Print(stdout, 0);
-	doc.SaveFile(fn);
-#else
-	strncpy(fntemp, "/tmp/ozwcp.poll.XXXXXX.xml", sizeof(fntemp));
-	fd = mkstemps(fntemp,4);
-	if (fd == -1)
-		return MHD_YES;
-	fs = fdopen(fd,"w");
-	if (debug)
-		doc.Print(stdout, 0);
-	doc.SaveFile(fs);
-	fclose(fs);
-#endif
-	ret = web_send_file(conn, fntemp, MHD_HTTP_OK, true);
-	return ret;
-}
+	return web_send_xml(conn,doc);
+} // int Webserver::SendPollResponse 
 /*
  * SendDeviceListResponse
  * Process request for Device List from client and return
@@ -899,15 +778,6 @@ int Webserver::SendDeviceListResponse (struct MHD_Connection *conn)
 	TiXmlDocument doc;
 	char str[16];
 	int32 i, j;
-	char fntemp[32];
-#ifdef NO_MKSTEMPS
-	char *fn;
-#else
-	int fd;
-	FILE *fs;
-#endif
-	int32 ret;
-
 	TiXmlDeclaration* decl = new TiXmlDeclaration( "1.0", "utf-8", "" );
 	doc.LinkEndChild(decl);
 	TiXmlElement* pollElement = new TiXmlElement("devices");
@@ -928,7 +798,6 @@ int Webserver::SendDeviceListResponse (struct MHD_Connection *conn)
 	pollElement->SetAttribute("cmode", cmode);
 	pollElement->SetAttribute("save", needsave);
 	pollElement->SetAttribute("noop", noop);
-
 	pthread_mutex_lock(&nlock);
 		i = 0;
 		j = 1;
@@ -990,29 +859,8 @@ int Webserver::SendDeviceListResponse (struct MHD_Connection *conn)
 			i++;
 		}
 	pthread_mutex_unlock(&nlock);
-#ifdef NO_MKSTEMPS
-	strncpy(fntemp, "/tmp/ozwcp.devices.XXXXXX", sizeof(fntemp));
-	fn = mktemp(fntemp);
-	if (fn == NULL)
-	  return MHD_YES;
-	strncat(fntemp, ".xml", sizeof(fntemp));
-	if (debug)
-	  doc.Print(stdout, 0);
-	doc.SaveFile(fn);
-#else
-	strncpy(fntemp, "/tmp/ozwcp.devices.XXXXXX.xml", sizeof(fntemp));
-	fd = mkstemps(fntemp,4);
-	if (fd == -1)
-		return MHD_YES;
-	fs = fdopen(fd,"w");
-	if (debug)
-		doc.Print(stdout, 0);
-	doc.SaveFile(fs);
-	fclose(fs);
-#endif
-	ret = web_send_file(conn, fntemp, MHD_HTTP_OK, true);
-	return ret;
-}
+	return web_send_xml(conn,doc);
+} // int Webserver::SendDeviceListResponse
 
 /*
  * web_controller_update
@@ -1074,13 +922,13 @@ void web_controller_update (Driver::ControllerState cs, Driver::ControllerError 
 		s  = s + controllerErrorStr(err);
 	cp->setAdminMessage(s);
 	cp->setAdminState(more);
-}
+} // void web_controller_update
 
 /*
  * web_config_post
  * Handle the post of the updated data
+ * move the keyword form data to the conninfo_t struct positional fields based on func type
  */
-
 int web_config_post (void *cls, enum MHD_ValueKind kind, const char *key, const char *filename,
 		const char *content_type, const char *transfer_encoding,
 		const char *data, uint64_t off, size_t size)
@@ -1174,7 +1022,7 @@ int web_config_post (void *cls, enum MHD_ValueKind kind, const char *key, const 
 			cp->conn_arg2 = (void *)strdup(data);
 	}
 	return MHD_YES;
-}
+} // int web_config_post
 
 /*
  * Process web requests
@@ -1187,7 +1035,36 @@ int Webserver::HandlerEP (void *cls, struct MHD_Connection *conn, const char *ur
 
 	return ws->Handler(conn, url, method, version, up_data, up_data_size, ptr);
 }
+// Process all the requests received via HTTP GET
+int Webserver::respond_by_get_case (struct MHD_Connection *conn, const char *url) {
+   int ret;
+   if (strcmp(url, "/") == 0 ||
+		 strcmp(url, "/index.html") == 0)
+	   ret = web_send_file(conn, "cp.html", MHD_HTTP_OK, false);
+	else if (strcmp(url, "/scenes.html") == 0)
+	   ret = web_send_file(conn, "scenes.html", MHD_HTTP_OK, false);
+	else if (strcmp(url, "/cp.js") == 0)
+	   ret = web_send_file(conn, "cp.js", MHD_HTTP_OK, false);
+	else if (strcmp(url, "/jquery.min.js") == 0)
+	   ret = web_send_file(conn, "jquery.min.js", MHD_HTTP_OK, false);
+	else if (strcmp(url, "/bootstrap.min.js") == 0)
+	   ret = web_send_file(conn, "bootstrap.min.js", MHD_HTTP_OK, false);
+	else if (strcmp(url, "/bootstrap.min.css") == 0)
+	   ret = web_send_file(conn, "bootstrap.min.css", MHD_HTTP_OK, false);
+	else if (strcmp(url, "/favicon.png") == 0)
+	   ret = web_send_file(conn, "openzwavetinyicon.png", MHD_HTTP_OK, false);
+	else if (strcmp(url, "/poll.xml") == 0 && (devname != NULL || usb))
+	   ret = SendPollResponse(conn);
+	else if (strcmp(url, "/devices.xml") == 0 && (devname != NULL || usb))
+	   ret = SendDeviceListResponse(conn);
+	else if (strcmp(url, "/currdev") == 0) 
+	   ret = web_send_data(conn, devname ? devname : "NULL", MHD_HTTP_OK, false, false, "text/plain");
+	else
+	   ret = web_send_data(conn, UNKNOWN, MHD_HTTP_NOT_FOUND, false, false, NULL);
+		return ret;
+}
 
+// What does the return code indicate? !!
 int Webserver::Handler (struct MHD_Connection *conn, const char *url,
 		const char *method, const char *version, const char *up_data,
 		size_t *up_data_size, void **ptr)
@@ -1223,32 +1100,8 @@ int Webserver::Handler (struct MHD_Connection *conn, const char *url,
 		*ptr = (void *)cp;
 		return MHD_YES;
 	}
-	if (strcmp(method, MHD_HTTP_METHOD_GET) == 0) {
-		if (strcmp(url, "/") == 0 ||
-				strcmp(url, "/index.html") == 0)
-			ret = web_send_file(conn, "cp.html", MHD_HTTP_OK, false);
-		else if (strcmp(url, "/scenes.html") == 0)
-			ret = web_send_file(conn, "scenes.html", MHD_HTTP_OK, false);
-		else if (strcmp(url, "/cp.js") == 0)
-			ret = web_send_file(conn, "cp.js", MHD_HTTP_OK, false);
-		else if (strcmp(url, "/jquery.min.js") == 0)
-			ret = web_send_file(conn, "jquery.min.js", MHD_HTTP_OK, false);
-		else if (strcmp(url, "/bootstrap.min.js") == 0)
-			ret = web_send_file(conn, "bootstrap.min.js", MHD_HTTP_OK, false);
-		else if (strcmp(url, "/bootstrap.min.css") == 0)
-			ret = web_send_file(conn, "bootstrap.min.css", MHD_HTTP_OK, false);
-		else if (strcmp(url, "/favicon.png") == 0)
-			ret = web_send_file(conn, "openzwavetinyicon.png", MHD_HTTP_OK, false);
-		else if (strcmp(url, "/poll.xml") == 0 && (devname != NULL || usb))
-			ret = SendPollResponse(conn);
-		else if (strcmp(url, "/devices.xml") == 0 && (devname != NULL || usb))
-			ret = SendDeviceListResponse(conn);
-		else if (strcmp(url, "/currdev") == 0) 
-			ret = web_send_data(conn, devname ? devname : "NULL", MHD_HTTP_OK, false, false, "text/plain"); // no free, no copy
-		else
-			ret = web_send_data(conn, UNKNOWN, MHD_HTTP_NOT_FOUND, false, false, NULL); // no free, no copy
-		return ret;
-	} else if (strcmp(method, MHD_HTTP_METHOD_POST) == 0) {
+	if (strcmp(method, MHD_HTTP_METHOD_GET) == 0) return(respond_by_get_case(conn,url));
+	else if (strcmp(method, MHD_HTTP_METHOD_POST) == 0) {
 		cp = (conninfo_t *)*ptr;
 		if (strcmp(url, "/devpost.html") == 0) {
 			if (*up_data_size != 0) {
@@ -1338,8 +1191,7 @@ int Webserver::Handler (struct MHD_Connection *conn, const char *url,
 			if (*up_data_size != 0) {
 				MHD_post_process(cp->conn_pp, up_data, *up_data_size);
 				*up_data_size = 0;
-
-				cp->conn_res = (void *)SendSceneResponse(conn, (char *)cp->conn_arg1, (char *)cp->conn_arg2, (char *)cp->conn_arg3, (char *)cp->conn_arg4);
+				SendSceneResponse(conn, (char *)cp->conn_arg1, (char *)cp->conn_arg2, (char *)cp->conn_arg3, (char *)cp->conn_arg4);
 				return MHD_YES;
 			} else
 				ret = web_send_file(conn, (char *)cp->conn_res, MHD_HTTP_OK, true);
@@ -1347,17 +1199,18 @@ int Webserver::Handler (struct MHD_Connection *conn, const char *url,
 			if (*up_data_size != 0) {
 				MHD_post_process(cp->conn_pp, up_data, *up_data_size);
 				*up_data_size = 0;
-
-				cp->conn_res = (void *)SendTopoResponse(conn, (char *)cp->conn_arg1, (char *)cp->conn_arg2, (char *)cp->conn_arg3, (char *)cp->conn_arg4);
+				SendTopoResponse(conn,(char *)cp->conn_arg1,(char *)cp->conn_arg2,
+									  (char *)cp->conn_arg3, (char *)cp->conn_arg4);
+				//cp->conn_res = (void *)SendTopoResponse(conn, (char *)cp->conn_arg1, (char *)cp->conn_arg2, (char *)cp->conn_arg3, (char *)cp->conn_arg4);
 				return MHD_YES;
-			} else
+			} else // HOW CAN cp->conn_res possibly be non-null here?...
 				ret = web_send_file(conn, (char *)cp->conn_res, MHD_HTTP_OK, true);
 		} else if (strcmp(url, "/statpost.html") == 0) {
 			if (*up_data_size != 0) {
 				MHD_post_process(cp->conn_pp, up_data, *up_data_size);
 				*up_data_size = 0;
 
-				cp->conn_res = (void *)SendStatResponse(conn, (char *)cp->conn_arg1, (char *)cp->conn_arg2, (char *)cp->conn_arg3, (char *)cp->conn_arg4);
+				SendStatResponse(conn, (char *)cp->conn_arg1, (char *)cp->conn_arg2, (char *)cp->conn_arg3, (char *)cp->conn_arg4);
 			} else
 				ret = web_send_file(conn, (char *)cp->conn_res, MHD_HTTP_OK, true);
 			return MHD_YES;
@@ -1366,7 +1219,7 @@ int Webserver::Handler (struct MHD_Connection *conn, const char *url,
 				MHD_post_process(cp->conn_pp, up_data, *up_data_size);
 				*up_data_size = 0;
 
-				cp->conn_res = (void *)SendTestHealResponse(conn, (char *)cp->conn_arg1, (char *)cp->conn_arg2, (char *)cp->conn_arg3, (char *)cp->conn_arg4);
+				SendTestHealResponse(conn, (char *)cp->conn_arg1, (char *)cp->conn_arg2, (char *)cp->conn_arg3, (char *)cp->conn_arg4);
 				return MHD_YES;
 			} else
 				ret = web_send_file(conn, (char *)cp->conn_res, MHD_HTTP_OK, true);
@@ -1577,7 +1430,7 @@ int Webserver::Handler (struct MHD_Connection *conn, const char *url,
 		return ret;
 	} else
 		return MHD_NO;
-}
+} // int Webserver::Handler
 
 /*
  * web_free

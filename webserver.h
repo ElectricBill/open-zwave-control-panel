@@ -53,16 +53,17 @@ class Webserver {
 				const char *version, const char *up_data, size_t *up_data_size, void **ptr);
 		int Handler(struct MHD_Connection *conn, const char *url, const char *method,
 				const char *version, const char *up_data, size_t *up_data_size, void **ptr);
+		int respond_by_get_case (struct MHD_Connection *conn, const char *url);
 		static void FreeEP(void *cls, struct MHD_Connection *conn, void **ptr, enum MHD_RequestTerminationCode code);
 		void Free(struct MHD_Connection *conn, void **ptr, enum MHD_RequestTerminationCode code);
 		void web_get_groups(int i, TiXmlElement *ep);
 		void web_get_values(int i, TiXmlElement *ep);
 		int SendPollResponse(struct MHD_Connection *conn);
 		int SendDeviceListResponse(struct MHD_Connection *conn);
-		const char *SendSceneResponse(struct MHD_Connection *conn, const char *fun, const char *arg1, const char *arg2, const char *arg3);
-		const char *SendTopoResponse(struct MHD_Connection *conn, const char *fun, const char *arg1, const char *arg2, const char *arg3);
-		const char *SendStatResponse(struct MHD_Connection *conn, const char *fun, const char *arg1, const char *arg2, const char *arg3);
-		const char *SendTestHealResponse(struct MHD_Connection *conn, const char *fun, const char *arg1, const char *arg2, const char *arg3);
+		int SendSceneResponse(struct MHD_Connection *conn, const char *fun, const char *arg1, const char *arg2, const char *arg3);
+		int SendTopoResponse(struct MHD_Connection *conn, const char *fun, const char *arg1, const char *arg2, const char *arg3);
+		int SendStatResponse(struct MHD_Connection *conn, const char *fun, const char *arg1, const char *arg2, const char *arg3);
+		int SendTestHealResponse(struct MHD_Connection *conn, const char *fun, const char *arg1, const char *arg2, const char *arg3);
 
 		static bool usb;
 		static char *devname;
