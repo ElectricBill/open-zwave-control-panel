@@ -66,20 +66,14 @@ function GetDefaultDevice() {
         BED();
     }
     devhttp.open("GET", "currdev", true);
-    if (window.XMLHttpRequest) { // code for IE7+, Firefox, Chrome, Opera, Safari
-            devhttp.send(null);
-    } else { // code for IE6, IE5
-            devhttp.send();
-    }
+	 sendXHR(devhttp)
 }
-
 function OptionGroup(label, disabled) {
     var element = document.createElement('optgroup');
     if (disabled !== undefined) element.disabled = disabled;
     if (label !== undefined) element.label = label;
     return element;
 }
-
 function SaveNode(newid) {
     var i = newid.substr(4);
     var c = -1;
