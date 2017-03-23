@@ -20,7 +20,7 @@ DEBUG_LDFLAGS	:= -g
 # Change for DEBUG or RELEASE
 # The NO_MKSTEMPS indicates to the compiler that mkstemps(3) is unavailable.  The code
 # to use calls mktemp instead.  This generates linker warnings.  It is benign but annoying.
-CFLAGS	:= -c $(DEBUG_CFLAGS) # -DNO_MKSTEMPS
+CFLAGS	:= -c -std=c++11 $(DEBUG_CFLAGS) # -DNO_MKSTEMPS
 LDFLAGS	:= $(DEBUG_LDFLAGS)
 
 # Assume all Z-Wave stuff under our parent directory, library in sibling...
