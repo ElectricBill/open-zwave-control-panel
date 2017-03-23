@@ -101,7 +101,8 @@ static int web_send_data (struct MHD_Connection *connection, const char *data,
 								  const int code, const char *ct) {
 	struct MHD_Response *response;
 	int ret;
-	response = MHD_create_response_from_buffer(strlen(data),(void *)data,MHD_RESPMEM_PERSISTENT);
+	response = MHD_create_response_from_buffer(strlen(data),
+															 (void *)data,MHD_RESPMEM_PERSISTENT);
 	if (response == NULL)
 	  return MHD_NO;
 	if (ct != NULL) MHD_add_response_header(response, "Content-type", ct);
@@ -235,9 +236,11 @@ void Webserver::web_get_values (int i, TiXmlElement *ep) {
 		valueElement->SetAttribute("index", id.GetIndex());
 		valueElement->SetAttribute("label", Manager::Get()->GetValueLabel(id).c_str());
 		valueElement->SetAttribute("units", Manager::Get()->GetValueUnits(id).c_str());
-		valueElement->SetAttribute("readonly", Manager::Get()->IsValueReadOnly(id) ? "true" : "false");
+		valueElement->SetAttribute("readonly",
+											Manager::Get()->IsValueReadOnly(id) ? "true" : "false");
 		if (id.GetGenre() != ValueID::ValueGenre_Config)
-			valueElement->SetAttribute("polled", Manager::Get()->isPolled(id) ? "true" : "false");
+			valueElement->SetAttribute("polled",
+												Manager::Get()->isPolled(id) ? "true" : "false");
 		if (id.GetType() == ValueID::ValueType_List) {
 			vector<string> strs;
 			Manager::Get()->GetValueListItems(id, &strs);
@@ -391,10 +394,14 @@ int Webserver::SendStatResponse (struct MHD_Connection *conn, const char *fun,
 				snprintf(str, sizeof(str), "%d", i);
 				nodeElement->SetAttribute("id", str);
 				nodeElement->LinkEndChild(newstat("nstat", "Sent messages", ndata.m_sentCnt));
-				nodeElement->LinkEndChild(newstat("nstat", "Failed sent messages", ndata.m_sentFailed));
-				nodeElement->LinkEndChild(newstat("nstat", "Retried sent messages", ndata.m_retries));
-				nodeElement->LinkEndChild(newstat("nstat", "Received messages", ndata.m_receivedCnt));
-				nodeElement->LinkEndChild(newstat("nstat", "Received duplicates", ndata.m_receivedDups));
+				nodeElement->LinkEndChild(newstat("nstat", "Failed sent messages",
+															 ndata.m_sentFailed));
+				nodeElement->LinkEndChild(newstat("nstat", "Retried sent messages",
+															 ndata.m_retries));
+				nodeElement->LinkEndChild(newstat("nstat", "Received messages",
+															 ndata.m_receivedCnt));
+				nodeElement->LinkEndChild(newstat("nstat", "Received duplicates",
+															 ndata.m_receivedDups));
 				nodeElement->LinkEndChild(newstat("nstat", "Received unsolicited",
 															 ndata.m_receivedUnsolicited));
 				nodeElement->LinkEndChild(newstat("nstat", "Last sent message",
@@ -417,7 +424,8 @@ int Webserver::SendStatResponse (struct MHD_Connection *conn, const char *fun,
 					ccElement->SetAttribute("id", str);
 					ccElement->SetAttribute("name", cclassStr(ccd.m_commandClassId));
 					ccElement->LinkEndChild(newstat("cstat", "Messages sent", ccd.m_sentCnt));
-					ccElement->LinkEndChild(newstat("cstat", "Messages received", ccd.m_receivedCnt));
+					ccElement->LinkEndChild(newstat("cstat",
+															  "Messages received", ccd.m_receivedCnt));
 					nodeElement->LinkEndChild(ccElement);
 					ndata.m_ccData.pop_front();
 				}
@@ -748,53 +756,63 @@ int Webserver::SendDeviceListResponse (struct MHD_Connection *conn) {
 				bool listening;
 				bool flirs;
 				bool zwaveplus;
-				TiXmlElement* nodeElement = new TiXmlElement("node");
-				pollElement->LinkEndChild(nodeElement);
-				nodeElement->SetAttribute("id", i);
+				TiXmlElement* ne = new TiXmlElement("node");
+				pollElement->LinkEndChild(ne);
+				ne->SetAttribute("id", i);
 				zwaveplus = Manager::Get()->IsNodeZWavePlus(homeId, i);
 				if (zwaveplus) {
 					string value = Manager::Get()->GetNodePlusTypeString(homeId, i);
 					value += " " + Manager::Get()->GetNodeRoleString(homeId, i);
-					nodeElement->SetAttribute("btype", value.c_str());
-					nodeElement->SetAttribute("gtype", Manager::Get()->GetNodeDeviceTypeString(homeId, i).c_str());
+					ne->SetAttribute("btype", value.c_str());
+					ne->SetAttribute("gtype",
+										  Manager::Get()->GetNodeDeviceTypeString(homeId, i).c_str());
 				} else {
-					nodeElement->SetAttribute("btype", nodeBasicStr(Manager::Get()->GetNodeBasic(homeId, i)));
-					nodeElement->SetAttribute("gtype", Manager::Get()->GetNodeType(homeId, i).c_str());
+					ne->SetAttribute("btype",
+										  nodeBasicStr(Manager::Get()->GetNodeBasic(homeId, i)));
+					ne->SetAttribute("gtype", Manager::Get()->GetNodeType(homeId, i).c_str());
 				}
-				nodeElement->SetAttribute("name", Manager::Get()->GetNodeName(homeId, i).c_str());
-				nodeElement->SetAttribute("location", Manager::Get()->GetNodeLocation(homeId, i).c_str());
-				nodeElement->SetAttribute("manufacturer", Manager::Get()->GetNodeManufacturerName(homeId, i).c_str());
-				nodeElement->SetAttribute("product", Manager::Get()->GetNodeProductName(homeId, i).c_str());
+				ne->SetAttribute("name", Manager::Get()->GetNodeName(homeId, i).c_str());
+				ne->SetAttribute("location", Manager::Get()->GetNodeLocation(homeId, i).c_str());
+				ne->SetAttribute("manufacturer",
+									  Manager::Get()->GetNodeManufacturerName(homeId, i).c_str());
+				ne->SetAttribute("product", Manager::Get()->GetNodeProductName(homeId, i).c_str());
 				listening = Manager::Get()->IsNodeListeningDevice(homeId, i);
-				nodeElement->SetAttribute("listening", listening ? "true" : "false");
+				ne->SetAttribute("listening", listening ? "true" : "false");
 				flirs = Manager::Get()->IsNodeFrequentListeningDevice(homeId, i);
-				nodeElement->SetAttribute("frequent", flirs ? "true" : "false");
-				nodeElement->SetAttribute("zwaveplus", zwaveplus ? "true" : "false");
-				nodeElement->SetAttribute("beam", Manager::Get()->IsNodeBeamingDevice(homeId, i) ? "true" : "false");
-				nodeElement->SetAttribute("routing", Manager::Get()->IsNodeRoutingDevice(homeId, i) ? "true" : "false");
-				nodeElement->SetAttribute("security", Manager::Get()->IsNodeSecurityDevice(homeId, i) ? "true" : "false");
+				ne->SetAttribute("frequent", flirs ? "true" : "false");
+				ne->SetAttribute("zwaveplus", zwaveplus ? "true" : "false");
+				ne->SetAttribute("beam",
+									  Manager::Get()->IsNodeBeamingDevice(homeId, i) ? "true":"false");
+				ne->SetAttribute("routing",
+									  Manager::Get()->IsNodeRoutingDevice(homeId, i) ? "true":"false");
+				ne->SetAttribute("security",
+									  Manager::Get()->IsNodeSecurityDevice(homeId, i) ? "true":"false");
 #if 0
 				fprintf(stderr, "i=%d failed=%d\n", i, Manager::Get()->IsNodeFailed(homeId, i));
 				fprintf(stderr, "i=%d awake=%d\n", i, Manager::Get()->IsNodeAwake(homeId, i));
-				fprintf(stderr, "i=%d state=%s\n", i, Manager::Get()->GetNodeQueryStage(homeId, i).c_str());
+				fprintf(stderr, "i=%d state=%s\n", i,
+						  Manager::Get()->GetNodeQueryStage(homeId, i).c_str());
 				fprintf(stderr, "i=%d listening=%d flirs=%d\n", i, listening, flirs);
 #endif
-				if (Manager::Get()->IsNodeFailed(homeId, i))	nodeElement->SetAttribute("status", "Dead");
+				if (Manager::Get()->IsNodeFailed(homeId, i))	ne->SetAttribute("status", "Dead");
 				else {
 					string s = Manager::Get()->GetNodeQueryStage(homeId, i);
 					if (s == "Complete")
 						if (i != nodeId && !listening && !flirs)
-							nodeElement->SetAttribute("status", Manager::Get()->IsNodeAwake(homeId, i) ? "Awake" : "Sleeping" );
+							ne->SetAttribute("status",
+												  Manager::Get()->IsNodeAwake(homeId, i) ?
+												                          "Awake" : "Sleeping" );
 						else
-							nodeElement->SetAttribute("status", "Ready");
+							ne->SetAttribute("status", "Ready");
 					else {
 						if (i != nodeId && !listening && !flirs)
-							s = s + (Manager::Get()->IsNodeAwake(homeId, i) ? " (awake)" : " (sleeping)");
-						nodeElement->SetAttribute("status", s.c_str());
+							s = s + (Manager::Get()->IsNodeAwake(homeId, i) ?
+										                            " (awake)" : " (sleeping)");
+						ne->SetAttribute("status", s.c_str());
 					}
 				}
-				web_get_groups(i, nodeElement);
-				web_get_values(i, nodeElement);
+				web_get_groups(i, ne);
+				web_get_values(i, ne);
 				j++;
 			}
 			i++;
@@ -806,7 +824,8 @@ int Webserver::SendDeviceListResponse (struct MHD_Connection *conn) {
  * web_controller_update
  * Handle controller function feedback from library.
  */
-void web_controller_update (Driver::ControllerState cs, Driver::ControllerError err, void *ct) {
+void web_controller_update (Driver::ControllerState cs, Driver::ControllerError err,
+									 void *ct) {
 	Webserver *cp = (Webserver *)ct;
 	string s;
 	bool more = true;
@@ -870,12 +889,9 @@ int web_config_post (void *cls, enum MHD_ValueKind kind, const char *key, const 
 	conninfo_t *cp = (conninfo_t *)cls;
 	fprintf(stderr, "post: key=%s data=%s size=%d\n", key, data, size);
 	if (strcmp(cp->conn_url, "/devpost.html") == 0) {
-		if (strcmp(key, "fn") == 0)
-			cp->conn_arg1 = (void *)strdup(data);
-		else if (strcmp(key, "dev") == 0)
-			cp->conn_arg2 = (void *)strdup(data);
-		else if (strcmp(key, "usb") == 0)
-			cp->conn_arg3 = (void *)strdup(data);
+		if (strcmp(key, "fn") == 0) cp->conn_arg1 = (void *)strdup(data);
+		else if (strcmp(key, "dev") == 0) cp->conn_arg2 = (void *)strdup(data);
+		else if (strcmp(key, "usb") == 0) cp->conn_arg3 = (void *)strdup(data);
 	} else if (strcmp(cp->conn_url, "/valuepost.html") == 0) {
 		cp->conn_arg1 = (void *)strdup(key);
 		cp->conn_arg2 = (void *)strdup(data);
@@ -883,76 +899,46 @@ int web_config_post (void *cls, enum MHD_ValueKind kind, const char *key, const 
 		cp->conn_arg1 = (void *)strdup(key);
 		cp->conn_arg2 = (void *)strdup(data);
 	} else if (strcmp(cp->conn_url, "/admpost.html") == 0) {
-		if (strcmp(key, "fun") == 0)
-			cp->conn_arg1 = (void *)strdup(data);
-		else if (strcmp(key, "node") == 0)
-			cp->conn_arg2 = (void *)strdup(data);
-		else if (strcmp(key, "button") == 0)
-			cp->conn_arg3 = (void *)strdup(data);
+		if (strcmp(key, "fun") == 0) cp->conn_arg1 = (void *)strdup(data);
+		else if (strcmp(key, "node") == 0) cp->conn_arg2 = (void *)strdup(data);
+		else if (strcmp(key, "button") == 0) cp->conn_arg3 = (void *)strdup(data);
 	} else if (strcmp(cp->conn_url, "/nodepost.html") == 0) {
-		if (strcmp(key, "fun") == 0)
-			cp->conn_arg1 = (void *)strdup(data);
-		else if (strcmp(key, "node") == 0)
-			cp->conn_arg2 = (void *)strdup(data);
-		else if (strcmp(key, "value") == 0)
-			cp->conn_arg3 = (void *)strdup(data);
+		if (strcmp(key, "fun") == 0) cp->conn_arg1 = (void *)strdup(data);
+		else if (strcmp(key, "node") == 0) cp->conn_arg2 = (void *)strdup(data);
+		else if (strcmp(key, "value") == 0)	cp->conn_arg3 = (void *)strdup(data);
 	} else if (strcmp(cp->conn_url, "/grouppost.html") == 0) {
-		if (strcmp(key, "fun") == 0)
-			cp->conn_arg1 = (void *)strdup(data);
-		else if (strcmp(key, "node") == 0)
-			cp->conn_arg2 = (void *)strdup(data);
-		else if (strcmp(key, "num") == 0)
-			cp->conn_arg3 = (void *)strdup(data);
-		else if (strcmp(key, "groups") == 0)
-			cp->conn_arg4 = (void *)strdup(data);
+		if (strcmp(key, "fun") == 0) cp->conn_arg1 = (void *)strdup(data);
+		else if (strcmp(key, "node") == 0) cp->conn_arg2 = (void *)strdup(data);
+		else if (strcmp(key, "num") == 0) cp->conn_arg3 = (void *)strdup(data);
+		else if (strcmp(key, "groups") == 0) cp->conn_arg4 = (void *)strdup(data);
 	} else if (strcmp(cp->conn_url, "/pollpost.html") == 0) {
-		if (strcmp(key, "fun") == 0)
-			cp->conn_arg1 = (void *)strdup(data);
-		else if (strcmp(key, "node") == 0)
-			cp->conn_arg2 = (void *)strdup(data);
-		else if (strcmp(key, "ids") == 0)
-			cp->conn_arg3 = (void *)strdup(data);
-		else if (strcmp(key, "poll") == 0)
-			cp->conn_arg4 = (void *)strdup(data);
+		if (strcmp(key, "fun") == 0) cp->conn_arg1 = (void *)strdup(data);
+		else if (strcmp(key, "node") == 0) cp->conn_arg2 = (void *)strdup(data);
+		else if (strcmp(key, "ids") == 0) cp->conn_arg3 = (void *)strdup(data);
+		else if (strcmp(key, "poll") == 0) cp->conn_arg4 = (void *)strdup(data);
 	} else if (strcmp(cp->conn_url, "/savepost.html") == 0) {
-		if (strcmp(key, "fun") == 0)
-			cp->conn_arg1 = (void *)strdup(data);
+		if (strcmp(key, "fun") == 0)	cp->conn_arg1 = (void *)strdup(data);
 	} else if (strcmp(cp->conn_url, "/scenepost.html") == 0) {
-		if (strcmp(key, "fun") == 0)
-			cp->conn_arg1 = (void *)strdup(data);
-		else if (strcmp(key, "id") == 0)
-			cp->conn_arg2 = (void *)strdup(data);
-		else if (strcmp(key, "vid") == 0)
-			cp->conn_arg3 = (void *)strdup(data);
-		else if (strcmp(key, "label") == 0)
-			cp->conn_arg3 = (void *)strdup(data);
-		else if (strcmp(key, "value") == 0)
-			cp->conn_arg4 = (void *)strdup(data);
+		if (strcmp(key, "fun") == 0) cp->conn_arg1 = (void *)strdup(data);
+		else if (strcmp(key, "id") == 0) cp->conn_arg2 = (void *)strdup(data);
+		else if (strcmp(key, "vid") == 0) cp->conn_arg3 = (void *)strdup(data);
+		else if (strcmp(key, "label") == 0) cp->conn_arg3 = (void *)strdup(data);
+		else if (strcmp(key, "value") == 0) cp->conn_arg4 = (void *)strdup(data);
 	} else if (strcmp(cp->conn_url, "/topopost.html") == 0) {
-		if (strcmp(key, "fun") == 0)
-			cp->conn_arg1 = (void *)strdup(data);
+		if (strcmp(key, "fun") == 0) cp->conn_arg1 = (void *)strdup(data);
 	} else if (strcmp(cp->conn_url, "/statpost.html") == 0) {
-		if (strcmp(key, "fun") == 0)
-			cp->conn_arg1 = (void *)strdup(data);
+		if (strcmp(key, "fun") == 0) cp->conn_arg1 = (void *)strdup(data);
 	} else if (strcmp(cp->conn_url, "/thpost.html") == 0) {
-		if (strcmp(key, "fun") == 0)
-			cp->conn_arg1 = (void *)strdup(data);
-		if (strcmp(key, "num") == 0)
-			cp->conn_arg2 = (void *)strdup(data);
-		if (strcmp(key, "cnt") == 0)
-			cp->conn_arg3 = (void *)strdup(data);
-		if (strcmp(key, "healrrs") == 0)
-			cp->conn_arg3 = (void *)strdup(data);
+		if (strcmp(key, "fun") == 0) cp->conn_arg1 = (void *)strdup(data);
+		if (strcmp(key, "num") == 0) cp->conn_arg2 = (void *)strdup(data);
+		if (strcmp(key, "cnt") == 0) cp->conn_arg3 = (void *)strdup(data);
+		if (strcmp(key, "healrrs") == 0) cp->conn_arg3 = (void *)strdup(data);
 	} else if (strcmp(cp->conn_url, "/confparmpost.html") == 0) {
-		if (strcmp(key, "fun") == 0)
-			cp->conn_arg1 = (void *)strdup(data);
-		else if (strcmp(key, "node") == 0)
-			cp->conn_arg2 = (void *)strdup(data);
+		if (strcmp(key, "fun") == 0) cp->conn_arg1 = (void *)strdup(data);
+		else if (strcmp(key, "node") == 0) cp->conn_arg2 = (void *)strdup(data);
 	} else if (strcmp(cp->conn_url, "/refreshpost.html") == 0) {
-		if (strcmp(key, "fun") == 0)
-			cp->conn_arg1 = (void *)strdup(data);
-		else if (strcmp(key, "node") == 0)
-			cp->conn_arg2 = (void *)strdup(data);
+		if (strcmp(key, "fun") == 0) cp->conn_arg1 = (void *)strdup(data);
+		else if (strcmp(key, "node") == 0) cp->conn_arg2 = (void *)strdup(data);
 	}
 	return MHD_YES;
 } // int web_config_post
@@ -969,29 +955,29 @@ int Webserver::HandlerEP (void *cls, struct MHD_Connection *conn, const char *ur
 // Process all the requests received via HTTP GET
 int Webserver::respond_by_get_case (struct MHD_Connection *conn, const char *url) {
    int ret;
-   if (strcmp(url, "/") == 0 || strcmp(url, "/index.html") == 0)
-	   ret = web_send_file(conn, "cp.html");
-	else if (strcmp(url, "/scenes.html") == 0)
-	   ret = web_send_file(conn, "scenes.html");
-	else if (strcmp(url, "/cp.js") == 0)
-	   ret = web_send_file(conn, "cp.js");
-	else if (strcmp(url, "/jquery.min.js") == 0)
-	   ret = web_send_file(conn, "jquery.min.js");
-	else if (strcmp(url, "/bootstrap.min.js") == 0)
-	   ret = web_send_file(conn, "bootstrap.min.js");
-	else if (strcmp(url, "/bootstrap.min.css") == 0)
-	   ret = web_send_file(conn, "bootstrap.min.css");
-	else if (strcmp(url, "/favicon.png") == 0)
-	   ret = web_send_file(conn, "openzwavetinyicon.png");
-	else if (strcmp(url, "/poll.xml") == 0 && (devname != NULL || usb))
-	   ret = SendPollResponse(conn);
-	else if (strcmp(url, "/devices.xml") == 0 && (devname != NULL || usb))
-	   ret = SendDeviceListResponse(conn);
-	else if (strcmp(url, "/currdev") == 0) 
-	   ret = web_send_data(conn, devname ? devname : "NULL", MHD_HTTP_OK, "text/plain");
-	else
-	   ret = web_send_data(conn, UNKNOWN, MHD_HTTP_NOT_FOUND, NULL);
-		return ret;
+
+	std::map<string,const char *> gPath = { // simple cases - just return a file...
+		{"/","cp.html"},	{"/index.html","cp.html"}, // translated names
+		{"/scenes.html",0}, {"/cp.js",0}, {"/cp.css",0}, // same names
+		{"/jquery.min.js",0}, {"/jquery-ui.min.js",0}, {"/jquery-ui.min.css",0},
+		{"/bootstrap.min.js",0}, {"/bootstrap.min.css",0},
+		{"/favicon.png",0}
+	};
+	try { // is usr path in are simple translate and deliver table?
+		const char* xPath = gPath.at(url);
+		if (0 == xPath) xPath = url + 1; // Chop off leading "/"
+		ret = web_send_file(conn,xPath);
+	} catch (const std::out_of_range& oor) { // url not simple case, so...
+		if (strcmp(url, "/poll.xml") == 0 && (devname != NULL || usb))
+			ret = SendPollResponse(conn);
+		else if (strcmp(url, "/devices.xml") == 0 && (devname != NULL || usb))
+			ret = SendDeviceListResponse(conn);
+		else if (strcmp(url, "/currdev") == 0) 
+			ret = web_send_data(conn, devname ? devname : "NULL", MHD_HTTP_OK, "text/plain");
+		else
+			ret = web_send_data(conn, UNKNOWN, MHD_HTTP_NOT_FOUND, NULL);
+	}
+	return ret;
 }
 
 // What does the return code indicate? !!
@@ -1113,10 +1099,12 @@ int Webserver::Handler (struct MHD_Connection *conn, const char *url,
 								 (char *)cp->conn_arg3, (char *)cp->conn_arg4);
 		  return MHD_YES;
 		} else if (strcmp(url, "/statpost.html") == 0) {
-		  SendStatResponse(conn, (char *)cp->conn_arg1, (char *)cp->conn_arg2, (char *)cp->conn_arg3, (char *)cp->conn_arg4);
+		  SendStatResponse(conn, (char *)cp->conn_arg1, (char *)cp->conn_arg2,
+								 (char *)cp->conn_arg3, (char *)cp->conn_arg4);
 			return MHD_YES;
 		} else if (strcmp(url, "/thpost.html") == 0) {
-		  SendTestHealResponse(conn, (char *)cp->conn_arg1, (char *)cp->conn_arg2, (char *)cp->conn_arg3, (char *)cp->conn_arg4);
+		  SendTestHealResponse(conn, (char *)cp->conn_arg1, (char *)cp->conn_arg2,
+									  (char *)cp->conn_arg3, (char *)cp->conn_arg4);
 		  return MHD_YES;
 		} else if (strcmp(url, "/confparmpost.html") == 0) {
 		  if (cp->conn_arg2 != NULL && strlen((char *)cp->conn_arg2) > 0) {
@@ -1131,7 +1119,7 @@ int Webserver::Handler (struct MHD_Connection *conn, const char *url,
 		  }
 		  return MHD_YES;
 		} else if (strcmp(url, "/admpost.html") == 0) {
-		  if (strcmp((char *)cp->conn_arg1, "cancel") == 0) { /* cancel controller function */
+		  if (strcmp((char *)cp->conn_arg1, "cancel") == 0) {
 			 Manager::Get()->CancelControllerCommand(homeId);
 			 setAdminState(false);
 		  } else if (strcmp((char *)cp->conn_arg1, "addd") == 0) {
@@ -1231,7 +1219,8 @@ int Webserver::Handler (struct MHD_Connection *conn, const char *url,
 		  return MHD_YES;
 		} else if (strcmp(url, "/nodepost.html") == 0) {
 		   uint8 node;
-			if (cp->conn_arg2 != NULL && strlen((char *)cp->conn_arg2) > 4 && cp->conn_arg3 != NULL) {
+			if (cp->conn_arg2 != NULL && strlen((char *)cp->conn_arg2) > 4
+				 && cp->conn_arg3 != NULL) {
 			   node = strtol(((char *)cp->conn_arg2) + 4, NULL, 10);
 				if (strcmp((char *)cp->conn_arg1, "nam") == 0) { /* Node naming */
 				   Manager::Get()->SetNodeName(homeId, node, (char *)cp->conn_arg3);
