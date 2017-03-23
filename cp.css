@@ -1,0 +1,33 @@
+h1 {
+	 font-size: medium;
+}
+legend {
+	 font-size: medium;
+}
+h2,h3 {
+	 font-size: small;
+}
+.ghost {
+	 border: 1px solid gray;
+	 margin: 2px;
+	 background-color: lightgray;
+}
+.ozwpanel {
+	 border: 1px solid red;
+	 margin: 2px;
+	 background-color: yellow;
+}
+.ozwflowpanel {
+	 border: 1px solid red;
+	 margin: 2px;
+	 background-color: lightblue;
+}
+.ozwsubpanel {
+	 float: left;
+	 border: 1px solid brown;
+	 margin: 2px;
+	 background-color: white;
+}
+tr {
+	 border: 1px solid blue;
+}
